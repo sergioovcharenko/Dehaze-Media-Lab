@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="uk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0b1220">
+  <meta name="description" content="Незалежна лабораторія для порівняння алгоритмів Digital Dehazing на фото, відео та камері.">
+  <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./src/styles.css">
+  <title>Dehaze Media Lab — Web 1.0</title>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><div class="mark" aria-hidden="true">D<span>·</span></div><div><b>DEHAZE MEDIA LAB</b><small>WEB 1.0 · окремо від QGS APK</small></div></div>
+    <div class="top-actions"><span id="gpuTag" class="pill">GPU: ініціалізація</span><span id="sourceTag" class="pill subtle">Джерело не вибрано</span></div>
+  </header>
+  <main class="layout">
+    <section class="workspace" aria-label="Попередній перегляд">
+      <div class="workspace-head">
+        <div><h1>Перегляд та обробка</h1><p>Усі фото і відео обробляються локально у браузері.</p></div>
+        <div class="source-actions">
+          <button id="openPhoto" class="btn primary"><span>＋</span> Фото</button>
+          <button id="openVideo" class="btn">▣ Відео</button>
+          <button id="openCamera" class="btn">◉ Камера</button>
+        </div>
+        <input id="photoInput" type="file" accept="image/*" hidden>
+        <input id="videoInput" type="file" accept="video/*" hidden>
+      </div>
+      <div class="viewer-shell">
+        <div id="viewer" class="viewer view-split" role="img" aria-label="Порівняння оригіналу та обробки">
+          <div class="canvas-pane original"><canvas id="originalCanvas"></canvas><span class="pane-label">ОРИГІНАЛ</span></div>
+          <div class="canvas-pane processed"><canvas id="processedCanvas"></canvas><span class="pane-label">DEHAZE</span></div>
+          <div id="divider" class="split-divider" aria-hidden="true"></div>
+          <div id="emptyState" class="empty-state"><div class="empty-icon">▧</div><strong>Оберіть фото, відео або камеру</strong><span>Перевіряйте алгоритми на одному кадрі та порівнюйте зміни.</span></div>
+          <div class="view-bottom"><span id="previewMode" class="on-video">AUTO 2.0 · M16</span><span id="resolutionBadge" class="on-video">—</span></div>
+        </div>
+        <div id="splitBar" class="split-bar"><label for="splitRange">Порівняння</label><input id="splitRange" type="range" min="0" max="100" value="50"><output id="splitValue">50 / 50</output></div>
+        <div class="playback-controls">
+          <button id="playBtn" class="btn square" title="Відтворення" disabled>▶</button>
+          <button id="pauseBtn" class="btn square" title="Пауза" disabled>Ⅱ</button>
+          <button id="stopBtn" class="btn square" title="Стоп" disabled>■</button>
+          <button id="minus10" class="btn square" title="Назад на 10 секунд" disabled>−10</button>
+          <button id="plus10" class="btn square" title="Вперед на 10 секунд" disabled>+10</button>
+          <span id="curTime" class="time">00:00</span>
+          <input id="timeline" aria-label="Шкала часу" class="timeline" type="range" min="0" max="1000" value="0" disabled>
+          <span id="duration" class="time">00:00</span>
+          <select id="speed" aria-label="Швидкість відео" class="mini-select"><option value="0.5">0.5×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
+        </div>
+      </div>
+      <div class="view-options">
+        <div class="segmented" role="group" aria-label="Тип порівняння">
+          <button data-view="split" class="active">50/50</button><button data-view="side">Два кадри</button><button data-view="processed">Оброблене</button><button data-view="original">Оригінал</button>
+        </div>
+        <div class="view-exports"><button id="saveFrame" class="btn" disabled>↓ Зберегти оброблений кадр</button><button id="saveOriginal" class="btn" disabled>↓ Оригінал</button><button id="fullScreen" class="btn square" title="На весь екран">⛶</button></div>
+      </div>
+      <div class="camera-options"><label for="cameraSelect">Камера</label><select id="cameraSelect" class="field"><option value="">Автоматично · основна</option></select><label for="resSelect">Обробка</label><select id="resSelect" class="field"><option value="native">Макс. доступна</option><option value="1920">До 1080p</option><option value="1280">До 720p</option><option value="854">До 480p</option></select><button class="btn" id="swapCamera">↻ Змінити камеру</button></div>
+      <div class="metrics"><span>Камера/відео: <b id="sourceResolution">—</b></span><span>GPU-кадри/с: <b id="fps">—</b></span><span>CPU-час кадру: <b id="frameMs">—</b></span><span>Освітлення: <b id="lightState">—</b></span></div>
+      <div id="message" class="message" role="status">Для доступу до камери потрібен HTTPS або localhost. Фото й відео працюють локально.</div>
+    </section>
+    <aside class="settings" aria-label="Налаштування алгоритмів">
+      <div class="settings-head"><div><span class="eyebrow">DIGITAL DEHAZING</span><h2>Налаштування</h2></div><span class="version">TEST 16 · WEB PORT</span></div>
+      <div class="section"><label class="section-title">Режим обробки</label><div id="modeTabs" class="segmented three"><button data-mode="off">OFF</button><button data-mode="auto1">AUTO 1.0</button><button data-mode="auto2" class="active">AUTO 2.0</button><button data-mode="manual">MANUAL</button></div></div>
+      <div class="section"><label class="section-title" for="algorithm">Алгоритм</label><select id="algorithm" class="field full" disabled></select><p class="hint" id="modeDetail">AUTO 2.0: CLASSICAL + EDGE DCP (M16)</p></div>
+      <div class="section"><label class="section-title">Умови освітлення</label><div id="sceneTabs" class="segmented three"><button data-scene="auto" class="active">AUTO</button><button data-scene="day">DAY</button><button data-scene="night">NIGHT</button></div><p class="hint">AUTO визначає день/ніч за загальною яскравістю кадру.</p></div>
+      <div class="section"><div class="section-row"><label class="section-title" for="strength">Сила алгоритму</label><output id="strengthOut">65%</output></div><input type="range" id="strength" min="0" max="100" step="1" value="65"><div class="preset-buttons" id="strengthPresets"><button data-strength="35">LOW</button><button data-strength="65" class="active">MEDIUM</button><button data-strength="100">HIGH</button></div><p class="hint">AUTO використовує власне адаптивне посилення; цей повзунок задає базовий рівень.</p></div>
+      <div class="section"><div class="section-row"><label class="section-title" for="scenePreset">Профіль умов</label><button id="reset" class="link-button">Скинути</button></div><select id="scenePreset" class="field full"><option value="medium">Середній туман</option><option value="light">Легкий серпанок</option><option value="dense">Густий туман</option><option value="dusk">Сутінки / ніч</option><option value="custom">Власний</option></select></div>
+      <div class="section ranges" id="sliders">
+        <div class="slider-setting"><div class="section-row"><label for="haze">Видалення туману</label><output data-for="haze">65%</output></div><input type="range" id="haze" min="0" max="100" value="65" step="1"></div>
+        <div class="slider-setting"><div class="section-row"><label for="contrast">Контрастність</label><output data-for="contrast">+10</output></div><input type="range" id="contrast" min="-50" max="50" value="10" step="1"></div>
+        <div class="slider-setting"><div class="section-row"><label for="brightness">Яскравість</label><output data-for="brightness">0</output></div><input type="range" id="brightness" min="-50" max="50" value="0" step="1"></div>
+        <div class="slider-setting"><div class="section-row"><label for="saturation">Насиченість</label><output data-for="saturation">100%</output></div><input type="range" id="saturation" min="0" max="150" value="100" step="1"></div>
+        <div class="slider-setting"><div class="section-row"><label for="sky">Захист світлих ділянок</label><output data-for="sky">70%</output></div><input type="range" id="sky" min="0" max="100" value="70" step="1"></div>
+        <div class="slider-setting"><div class="section-row"><label for="detail">Деталізація</label><output data-for="detail">15%</output></div><input type="range" id="detail" min="0" max="100" value="15" step="1"></div>
+      </div>
+      <div class="section note"><b>Про алгоритми</b><p>Режими M1–M16 перенесені з GLSL TEST 16. Деякі — спрощені наближення: «CLAHE-like» не є гістограмним CLAHE, «MS RETINEX» не є повним MSRCR. Нові повзунки й корекція DAY/NIGHT додаються окремо.</p></div>
+      <div class="settings-footer"><span id="profileState">Профіль збережений локально</span><button id="restoreDefaults" class="btn">Заводські значення</button></div>
+    </aside>
+  </main>
+  <video id="mediaElement" muted playsinline preload="metadata" aria-hidden="true"></video>
+  <canvas id="analysisCanvas" width="64" height="36" hidden></canvas>
+  <script type="module" src="./src/app.js"></script>
+</body>
+</html>
