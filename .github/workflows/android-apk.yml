@@ -18,7 +18,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   apk:
@@ -29,9 +29,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
       - name: Install Android SDK
-        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+        run: |
+          echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
+          sdkmanager "platforms;android-35" "build-tools;35.0.0"
       - name: Prepare offline WebGL assets
         run: python3 android/package_assets.py
       - uses: gradle/actions/setup-gradle@v4
@@ -41,6 +42,17 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
       - name: Rename APK
         run: cp app/build/outputs/apk/debug/app-debug.apk Dehaze-Media-Lab-Tablet-1.1-UNIVERSAL.apk
+      - name: Publish downloadable APK
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view tablet-v1.1.0 >/dev/null 2>&1; then
+            gh release upload tablet-v1.1.0 Dehaze-Media-Lab-Tablet-1.1-UNIVERSAL.apk --clobber
+          else
+            gh release create tablet-v1.1.0 Dehaze-Media-Lab-Tablet-1.1-UNIVERSAL.apk \
+              --title "Dehaze Media Lab · Universal Android Tablet 1.1" \
+              --notes "Offline immersive WebGL test APK. Android 8+. Debug-signed; not yet device tested."
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: Dehaze-Media-Lab-Tablet-APK
