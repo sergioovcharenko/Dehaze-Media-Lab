@@ -32,7 +32,7 @@ jobs:
       - name: Install Android SDK
         run: |
           echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
-          sdkmanager "platforms;android-35" "build-tools;35.0.0"
+          "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
       - name: Prepare offline WebGL assets
         run: python3 android/package_assets.py
       - uses: gradle/actions/setup-gradle@v4
