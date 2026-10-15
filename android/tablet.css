@@ -66,3 +66,8 @@ body.panel-open .tablet-nav #tabletSettings{background:#226550}
  .split-bar{bottom:96px}
  .view-bottom{bottom:133px}
 }
+
+/* The meter stays centered above the media on tablets. */
+.viewer .fog-overlay{top:max(62px,env(safe-area-inset-top,0px) + 55px);width:clamp(184px,25vw,270px);max-width:46vw}
+@media(max-width:720px){.viewer .fog-overlay{top:max(58px,env(safe-area-inset-top,0px) + 48px);width:min(52vw,240px)}}
+@media(max-height:500px) and (orientation:landscape){.viewer .fog-overlay{top:43px;width:228px;padding:6px 10px}.viewer .fog-overlay-track{margin-top:4px}}
