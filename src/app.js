@@ -91,8 +91,18 @@ function setSource(type,element,name){source=element;sourceType=type;frameDirty=
   document.querySelectorAll('.playback-controls').forEach(p=>p.style.opacity=playing?'1':'.5');
   lastSize=''; updatePlayback();
 }
-function stopCamera(){if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}if(sourceType==='camera'){els.media.pause();els.media.srcObject=null;}}
-function clearPrevious(){source=null;sourceType='none';stopCamera();els.media.pause();els.media.removeAttribute('src');els.media.load();if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl=null;}}
+function stopCamera(){
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null;}
+  if(els.media.srcObject){els.media.pause();els.media.srcObject=null;}
+}
+function clearPrevious(){
+  // Stale srcObject takes precedence over video.src and can cause a black 2×2 frame.
+  stopCamera();
+  source=null;sourceType='none';frameDirty=true;
+  els.viewer.classList.remove('media-fallback');
+  els.media.pause();els.media.srcObject=null;els.media.removeAttribute('src');els.media.load();
+  if(currentUrl){URL.revokeObjectURL(currentUrl);currentUrl=null;}
+}
 function openFile(file,kind){if(!file)return;
   const valid=kind==='image'?(file.type.startsWith('image/')||/\.(png|jpe?g|webp|heic|heif)$/i.test(file.name)):(file.type.startsWith('video/')||/\.(mp4|mov|m4v|webm)$/i.test(file.name));
   if(!valid){setStatus('Цей тип файлу не розпізнано. Обери звичайне фото або відео.','error');return;}
@@ -101,9 +111,15 @@ function openFile(file,kind){if(!file)return;
     const img=new Image(); img.onload=()=>{setSource('image',img,file.name);setStatus('Фото відкрито. Можна змінювати алгоритми та зберігати результат.','ok');};
     img.onerror=()=>setStatus('Фото не підтримується цим браузером. Спробуй JPEG, PNG або WebP.','error');img.src=currentUrl;
   }else{
-    els.media.muted=true;els.media.playsInline=true;els.media.src=currentUrl;els.media.loop=false;
+    els.media.muted=true;els.media.playsInline=true;els.media.srcObject=null;els.media.src=currentUrl;els.media.loop=false;els.media.preload='auto';
     els.media.onloadedmetadata=()=>{setSource('video',els.media,file.name);updatePlayback();};
-    els.media.onerror=()=>setStatus('Не вдалося відкрити відео: браузер не підтримує його кодек. Спробуй MP4 H.264.','error');
+    els.media.onloadeddata=()=>{frameDirty=true;els.viewer.classList.remove('media-fallback');};
+    els.media.oncanplay=()=>{frameDirty=true;};
+    els.media.onresize=()=>{frameDirty=true;};
+    els.media.onerror=()=>{
+      els.viewer.classList.add('media-fallback');
+      setStatus('Не вдалося декодувати відео у WebView. Спробуй MP4 H.264 (yuv420p). Код: '+(els.media.error?.code||'невідомий'),'error');
+    };
     els.media.play().then(()=>{setStatus('Відео відтворюється. Натисни паузу для покадрового порівняння.','ok')}).catch(()=>setStatus('Відео завантажено. Натисни ▶ для відтворення.'));
   }
 }
@@ -135,7 +151,7 @@ async function openCamera(id=''){
   const track=stream.getVideoTracks()[0],trackSet=track?.getSettings?.()||{};
   setStatus(`Камера активна: ${trackSet.width||els.media.videoWidth} × ${trackSet.height||els.media.videoHeight}, ${trackSet.frameRate||'?'} кадрів/с. Максимум залежить від пристрою та браузера.`,'ok');
 }
-function outputSize(){const [w,h]=dims();if(!w||!h)return null;
+function outputSize(){const [w,h]=dims();if(!w||!h||(sourceType==='video'&&(w<16||h<16)))return null;
   const max= Math.min(gpu?.maxTextureSize||4096, gpu?.gl?.getParameter(gpu.gl.MAX_RENDERBUFFER_SIZE)||4096);
   let width=w,height=h;const lim=settings.output==='native'?Infinity:Number(settings.output);
   // Width limits resolution; tall portraits are limited by GPU max texture size.
@@ -170,7 +186,18 @@ function analyzeLighting(time){if(settings.scene!=='auto'){measuredNight=setting
 function currentMode(){return settings.processing==='auto1'?14:settings.processing==='auto2'?16:settings.processing==='auto3'?17:settings.processing==='manual'?settings.algorithm:0;}
 function draw(time){if(!gpu?.program||sourceType==='none')return;
   if ((sourceType==='video'||sourceType==='camera') && source.readyState<2) return;
-  const z=outputSize();if(!z)return;
+  const z=outputSize();
+  if(!z){
+    if(sourceType==='video' && source.readyState>=2 && source.currentTime>1 &&
+       (source.videoWidth<16||source.videoHeight<16) && !els.viewer.classList.contains('media-fallback')){
+      els.viewer.classList.add('media-fallback');
+      $('resolutionBadge').textContent='RAW · VIDEO';
+      setStatus('WebView не надає коректні відеокадри ('
+        +source.videoWidth+'×'+source.videoHeight+'). Увімкнено оригінальне відео без фільтра.','error');
+    }
+    return;
+  }
+  if(els.viewer.classList.contains('media-fallback'))els.viewer.classList.remove('media-fallback');
   const [w,h,sw,sh]=z;
   if(w!==els.original.width||h!==els.original.height){els.original.width=w;els.original.height=h;frameDirty=true;}
   const start=performance.now();
@@ -191,7 +218,7 @@ function tick(time){requestAnimationFrame(tick);
   if(time-lastMetrics>=1000){$('fps').textContent=frames?String(frames):'—';$('frameMs').textContent=frames?(msTotal/frames).toFixed(1)+' ms':'—';frames=0;msTotal=0;lastMetrics=time;}
 }
 function formatTime(sec){if(!Number.isFinite(sec))return'00:00';const h=Math.floor(sec/3600),m=Math.floor(sec/60)%60,s=Math.floor(sec%60);return(h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
-function updatePlayback(){const v=els.media;const isVideo=sourceType==='video';$('curTime').textContent=isVideo?formatTime(v.currentTime):'00:00';$('duration').textContent=isVideo?formatTime(v.duration):'00:00';
+function updatePlayback(){const v=els.media;const isVideo=sourceType==='video';$('curTime').textContent=isVideo?formatTime(v.currentTime):'00:00';$('duration').textContent=isVideo?(Number.isFinite(v.duration)?formatTime(v.duration):'--:--'):'00:00';
  if(isVideo&&!isDragging&&v.duration>0) $('timeline').value=Math.round((v.currentTime/v.duration)*1000);
 }
 function saveCanvas(canvas,name){if(!canvas.width){setStatus('Спочатку відкрий джерело.','error');return;}
