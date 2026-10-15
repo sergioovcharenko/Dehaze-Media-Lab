@@ -17,3 +17,18 @@
 .auto3-scan .fog-progress{height:9px;background:#162735;border-radius:999px;overflow:hidden;border:1px solid #334a59}
 .auto3-scan .fog-progress>div{height:100%;width:0;background:#49b8a2;border-radius:999px;transition:width .3s ease}
 .auto3-scan .hint{margin-top:9px;line-height:1.45}
+
+
+/* AUTO 3.0 fog-meter overlay: visible across all modes without stealing input. */
+.fog-overlay{position:absolute;z-index:9;top:12px;left:50%;transform:translateX(-50%);width:clamp(168px,28vw,268px);padding:9px 12px 8px;border:1px solid #a2e6dd78;border-radius:12px;background:rgba(7,19,31,.83);box-shadow:0 4px 18px #0008;backdrop-filter:blur(7px);pointer-events:none;color:#e8fff9;font-variant-numeric:tabular-nums}
+.fog-overlay[hidden]{display:none!important}
+.fog-overlay-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.fog-overlay-caption{font-size:9px;font-weight:800;letter-spacing:.065em;color:#adcec9}
+.fog-overlay-row strong{font-size:14px;line-height:1.1}
+.fog-overlay-track{height:5px;margin-top:7px;background:#294153;border-radius:10px;overflow:hidden}
+.fog-overlay-fill{width:0%;height:100%;border-radius:10px;background:#61d6b0;transition:width .65s ease}
+.fog-overlay-result{font-size:10px;line-height:1.25;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#d2f1e9}
+.fog-overlay[data-level="medium"] .fog-overlay-fill{background:#d6c36d}
+.fog-overlay[data-level="dense"] .fog-overlay-fill{background:#e89865}
+.fog-overlay[data-level="unknown"] .fog-overlay-fill{background:#6c8797}
+@media(max-width:620px){.fog-overlay{width:min(54vw,232px);top:9px;padding:7px 9px}.fog-overlay-caption{font-size:8px}.fog-overlay-row strong{font-size:12px}.fog-overlay-result{font-size:9px}}
