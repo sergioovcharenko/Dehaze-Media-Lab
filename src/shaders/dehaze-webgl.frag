@@ -162,7 +162,7 @@ void main() {
         highp float mult=0.26+0.46*s;
         highp float targetY=clamp(y+(y-local)*mult,0.0,1.0);
         outc=mix(c,clamp(c+vec3(targetY-y),0.0,1.0),(0.45+0.38*s)*guard);
-    } else if(mode<16.5) { // 16 AUTO 2.0: protected classic+edge-DCP fusion
+    } else if(mode<17.5) { // 16 AUTO 2.0 / 17 AUTO 3.0: adaptive protected classic+edge-DCP fusion
         highp float dc=guidedDark(uv);
         highp float base=localL(uv,vec2(0.010));
         highp float localContrast=clamp(abs(y-base)*5.0,0.0,1.0);
