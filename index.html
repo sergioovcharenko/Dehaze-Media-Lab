@@ -29,6 +29,7 @@
       </div>
       <div class="viewer-shell">
         <div id="viewer" class="viewer view-split" role="img" aria-label="Порівняння оригіналу та обробки">
+          <video id="mediaElement" muted playsinline preload="auto" aria-label="Локальний відеоплеєр"></video>
           <div class="canvas-pane original"><canvas id="originalCanvas"></canvas><span class="pane-label">ОРИГІНАЛ</span></div>
           <div class="canvas-pane processed"><canvas id="processedCanvas"></canvas><span class="pane-label">DEHAZE</span></div>
           <div id="divider" class="split-divider" aria-hidden="true"></div>
@@ -89,7 +90,7 @@
       <div class="settings-footer"><span id="profileState">Профіль збережений локально</span><button id="restoreDefaults" class="btn">Заводські значення</button></div>
     </aside>
   </main>
-  <video id="mediaElement" muted playsinline preload="metadata" aria-hidden="true"></video>
+  
   <canvas id="analysisCanvas" width="64" height="36" hidden></canvas>
   <script type="module" src="./src/app.js"></script>
 </body>
