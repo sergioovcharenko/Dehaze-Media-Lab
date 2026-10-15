@@ -71,3 +71,10 @@ body.panel-open .tablet-nav #tabletSettings{background:#226550}
 .viewer .fog-overlay{top:max(62px,env(safe-area-inset-top,0px) + 55px);width:clamp(184px,25vw,270px);max-width:46vw}
 @media(max-width:720px){.viewer .fog-overlay{top:max(58px,env(safe-area-inset-top,0px) + 48px);width:min(52vw,240px)}}
 @media(max-height:500px) and (orientation:landscape){.viewer .fog-overlay{top:43px;width:228px;padding:6px 10px}.viewer .fog-overlay-track{margin-top:4px}}
+
+/* Tablet 1.4: menus remain interactive; backdrop never intercepts video or touches. */
+.tablet-scrim,body.panel-open .tablet-scrim{display:none!important;pointer-events:none!important}
+body>.settings{position:fixed!important;z-index:2147483000!important;pointer-events:auto!important;isolation:isolate;touch-action:pan-y}
+body>.settings *{pointer-events:auto}
+body>.settings button,body>.settings input,body>.settings select{touch-action:auto}
+body>.tablet-nav{z-index:2147483001!important}
