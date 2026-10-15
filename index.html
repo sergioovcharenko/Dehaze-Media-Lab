@@ -8,11 +8,11 @@
   <link rel="icon" href="./assets/icon.svg" type="image/svg+xml">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="stylesheet" href="./src/styles.css">
-  <title>Dehaze Media Lab — Web 1.0</title>
+  <title>Dehaze Media Lab — Web 3.0</title>
 </head>
 <body>
   <header class="topbar">
-    <div class="brand"><div class="mark" aria-hidden="true">D<span>·</span></div><div><b>DEHAZE MEDIA LAB</b><small>WEB 1.0 · окремо від QGS APK</small></div></div>
+    <div class="brand"><div class="mark" aria-hidden="true">D<span>·</span></div><div><b>DEHAZE MEDIA LAB</b><small>WEB 3.0 · окремо від QGS APK</small></div></div>
     <div class="top-actions"><span id="gpuTag" class="pill">GPU: ініціалізація</span><span id="sourceTag" class="pill subtle">Джерело не вибрано</span></div>
   </header>
   <main class="layout">
@@ -59,9 +59,16 @@
       <div id="message" class="message" role="status">Для доступу до камери потрібен HTTPS або localhost. Фото й відео працюють локально.</div>
     </section>
     <aside class="settings" aria-label="Налаштування алгоритмів">
-      <div class="settings-head"><div><span class="eyebrow">DIGITAL DEHAZING</span><h2>Налаштування</h2></div><span class="version">TEST 16 · WEB PORT</span></div>
-      <div class="section"><label class="section-title">Режим обробки</label><div id="modeTabs" class="segmented three"><button data-mode="off">OFF</button><button data-mode="auto1">AUTO 1.0</button><button data-mode="auto2" class="active">AUTO 2.0</button><button data-mode="manual">MANUAL</button></div></div>
+      <div class="settings-head"><div><span class="eyebrow">DIGITAL DEHAZING</span><h2>Налаштування</h2></div><span class="version">WEB 3.0 · TEST 16 BASIS</span></div>
+      <div class="section"><label class="section-title">Режим обробки</label><div id="modeTabs" class="segmented three"><button data-mode="off">OFF</button><button data-mode="auto1">AUTO 1.0</button><button data-mode="auto2" class="active">AUTO 2.0</button><button data-mode="auto3">AUTO 3.0</button><button data-mode="manual">MANUAL</button></div></div>
       <div class="section"><label class="section-title" for="algorithm">Алгоритм</label><select id="algorithm" class="field full" disabled></select><p class="hint" id="modeDetail">AUTO 2.0: CLASSICAL + EDGE DCP (M16)</p></div>
+      <div class="section auto3-scan" id="auto3Panel">
+        <div class="section-row"><label class="section-title">AUTO 3.0 · Оцінка серпанку</label><output id="fogPercent">—</output></div>
+        <div class="fog-state" id="fogState">Очікування фото, відео або камери</div>
+        <div class="fog-progress"><div id="fogMeter"></div></div>
+        <p class="hint" id="fogConfidence">Лише експериментальна оцінка за кадром</p>
+        <p class="hint">Класифікація: немає / легкий / середній / густий. AUTO 3.0 змінює силу M16 автоматично; значення не є вимірюванням реальної видимості.</p>
+      </div>
       <div class="section"><label class="section-title">Умови освітлення</label><div id="sceneTabs" class="segmented three"><button data-scene="auto" class="active">AUTO</button><button data-scene="day">DAY</button><button data-scene="night">NIGHT</button></div><p class="hint">AUTO визначає день/ніч за загальною яскравістю кадру.</p></div>
       <div class="section"><div class="section-row"><label class="section-title" for="strength">Сила алгоритму</label><output id="strengthOut">65%</output></div><input type="range" id="strength" min="0" max="100" step="1" value="65"><div class="preset-buttons" id="strengthPresets"><button data-strength="35">LOW</button><button data-strength="65" class="active">MEDIUM</button><button data-strength="100">HIGH</button></div><p class="hint">AUTO використовує власне адаптивне посилення; цей повзунок задає базовий рівень.</p></div>
       <div class="section"><div class="section-row"><label class="section-title" for="scenePreset">Профіль умов</label><button id="reset" class="link-button">Скинути</button></div><select id="scenePreset" class="field full"><option value="medium">Середній туман</option><option value="light">Легкий серпанок</option><option value="dense">Густий туман</option><option value="dusk">Сутінки / ніч</option><option value="custom">Власний</option></select></div>
