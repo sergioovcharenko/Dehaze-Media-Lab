@@ -45,7 +45,7 @@ export class DehazeGL {
     gl.useProgram(p);gl.uniform1i(this.uniforms.source,0);
     gl.clearColor(0,0,0,1);
   }
-  draw(sourceCanvas,settings,mode,night) {
+  draw(sourceCanvas,settings,mode,night,fog3=null) {
     if(!this.program)return;
     const gl=this.gl, u=this.uniforms;
     if(this.canvas.width!==sourceCanvas.width||this.canvas.height!==sourceCanvas.height){
@@ -55,8 +55,14 @@ export class DehazeGL {
     gl.useProgram(this.program);
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,sourceCanvas);
-    const values={mode, strength:settings.strength/100,autoBlend:settings.processing==='auto1'||settings.processing==='auto2'?1:0,
-      u_off:settings.processing==='off'?1:0,u_haze:settings.haze/100,
+    const isAuto3=settings.processing==='auto3';
+    const fog=isAuto3 && fog3?.valid ? Math.max(0,Math.min(1,fog3.density)) : 0.15;
+    // AUTO 3.0 uses a conservative fog estimate to adjust strength. The user
+    // strength slider acts as sensitivity, not a forced haze category.
+    const strength=isAuto3 ? Math.max(.08,Math.min(.92,(.16+.77*fog)*(.45+.55*settings.strength/65))) : settings.strength/100;
+    const haze=isAuto3 ? Math.max(.22,Math.min(.96,.24+.70*fog)) : settings.haze/100;
+    const values={mode, strength,autoBlend:settings.processing==='auto1'||settings.processing==='auto2'||isAuto3?1:0,
+      u_off:settings.processing==='off'||(isAuto3&&fog3?.valid&&fog<.13)?1:0,u_haze:haze,
       u_brightness:settings.brightness/50,u_contrast:settings.contrast/50,
       u_saturation:settings.saturation/100,u_skyProtect:settings.sky/100,
       u_detail:settings.detail/100,u_night:night?1:0};
