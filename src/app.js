@@ -75,7 +75,7 @@ function updateAll() {
     default:desc=`MANUAL → M${settings.algorithm} · ${MODES.find(x=>x[0]===settings.algorithm)?.[1]}`;
   }
   $('modeDetail').textContent=desc;
-  $('previewMode').textContent=settings.processing==='off'?'OFF':settings.processing==='auto1'?'AUTO 1.0 · M14':settings.processing==='auto2'?'AUTO 2.0 · M16':settings.processing==='auto3'?'AUTO 3.0 · '+(fog3.valid?fog3.label:'аналіз…'):`MANUAL · M${settings.algorithm}`;
+  $('previewMode').textContent=settings.processing==='off'?'OFF':settings.processing==='auto1'?'AUTO 1.0 · M14':settings.processing==='auto2'?'AUTO 2.0 · M16':settings.processing==='auto3'?'AUTO 3.0 · M17 · '+(fog3.valid?fog3.label:'аналіз…'):`MANUAL · M${settings.algorithm}`;
   const viewer=els.viewer;
   viewer.className='viewer view-'+settings.view;
   viewer.querySelector('.processed').style.clipPath=settings.view==='split'?`inset(0 0 0 ${settings.split}%)`:'';
