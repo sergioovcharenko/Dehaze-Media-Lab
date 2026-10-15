@@ -1,6 +1,6 @@
 (() => {
   const init=()=>{
-    const scrim=document.createElement('div');scrim.className='tablet-scrim';document.body.appendChild(scrim);
+    // No scrim: prevents interception of settings touches and leaves video bright.
     const nav=document.createElement('div');nav.className='tablet-nav';nav.innerHTML='<span class="tag">DEHAZE LAB · APK</span><button type="button" id="tabletHide" title="Приховати елементи керування">◫</button><button type="button" id="tabletSettings" title="Налаштування алгоритмів">⚙</button>';
     document.body.appendChild(nav);
     const camera=document.querySelector('.camera-options');
@@ -10,9 +10,21 @@
     if(camera && settings)settings.appendChild(camera);
     if(metrics && settings)settings.appendChild(metrics);
     if(message && settings)settings.appendChild(message);
-    const togglePanel=()=>document.body.classList.toggle('panel-open');
-    document.getElementById('tabletSettings').addEventListener('click',togglePanel);
-    scrim.addEventListener('click',()=>document.body.classList.remove('panel-open'));
+    // Put settings directly under body: no parent stacking context can sit behind a touch-intercepting overlay.
+    if(settings){document.body.appendChild(settings);settings.style.pointerEvents='auto';}
+    const settingsButton=document.getElementById('tabletSettings');
+    const togglePanel=()=>{
+      document.body.classList.toggle('panel-open');
+      settingsButton.setAttribute('aria-expanded',String(document.body.classList.contains('panel-open')));
+    };
+    settingsButton.setAttribute('aria-expanded','false');
+    settingsButton.addEventListener('click',togglePanel);
+    document.addEventListener('pointerdown',event=>{
+      if(!document.body.classList.contains('panel-open'))return;
+      if(settings?.contains(event.target)||nav.contains(event.target))return;
+      document.body.classList.remove('panel-open');
+      settingsButton.setAttribute('aria-expanded','false');
+    },{passive:true});
     document.getElementById('tabletHide').addEventListener('click',()=>{
       const hidden=document.body.classList.toggle('controls-hidden');
       document.getElementById('tabletHide').textContent=hidden?'▣':'◫';
