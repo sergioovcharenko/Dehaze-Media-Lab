@@ -8,7 +8,7 @@ const MODES=[
   [9,'RETINEX-LIKE'],[10,'EDGE DCP'],[11,'MS RETINEX (LITE)'],
   [12,'LIME LIGHT'],[13,'LOCAL GAMMA'],[14,'CLASSIC + DCP'],[15,'LOCAL CONTRAST']
 ];
-const DEFAULT={processing:'auto2',algorithm:4,scene:'auto',strength:65,preset:'medium',haze:65,contrast:10,brightness:0,saturation:100,sky:70,detail:15,view:'split',split:50,output:'native'};
+const DEFAULT={processing:'auto3',algorithm:4,scene:'auto',strength:65,preset:'medium',haze:65,contrast:10,brightness:0,saturation:100,sky:70,detail:15,view:'split',split:50,output:'native'};
 const PRESETS={
   light:{haze:35,contrast:5,brightness:0,saturation:100,sky:75,detail:10},
   medium:{haze:65,contrast:10,brightness:0,saturation:100,sky:70,detail:15},
@@ -30,10 +30,21 @@ function updateFogIndicator(){
   $('fogState').textContent=fogLabelText;
   $('fogPercent').textContent=fog3.valid?Math.round(fog3.density*100)+'%':'—';
   $('fogMeter').style.width=(fog3.valid?Math.round(fog3.density*100):0)+'%';
-  $('fogConfidence').textContent=fog3.valid
+  const confidence=fog3.valid
     ?(fog3.confidence<.33?'Низька надійність':fog3.confidence<.65?'Середня надійність':'Вища надійність')
     :'Очікування фото, відео або камери';
-  if(settings.processing==='auto3')$('previewMode').textContent='AUTO 3.0 · '+(fog3.valid?fog3.label:'аналіз…');
+  $('fogConfidence').textContent=confidence;
+  const overlay=$('fogOverlay');
+  if(overlay){
+    overlay.hidden=sourceType==='none';
+    $('fogOverlayLabel').textContent=fog3.valid?fog3.label:'Аналіз кадру…';
+    $('fogOverlayPercent').textContent=fog3.valid?Math.round(fog3.density*100)+'%':'—';
+    $('fogOverlayFill').style.width=(fog3.valid?Math.round(fog3.density*100):0)+'%';
+    $('fogOverlayMeter').setAttribute('aria-valuenow',fog3.valid?String(Math.round(fog3.density*100)):'0');
+    overlay.title='Експериментальна оцінка, не фізичний вимір туману. '+confidence;
+    overlay.dataset.level=fog3.valid?(fog3.density<.19?'clear':fog3.density<.40?'light':fog3.density<.67?'medium':'dense'):'unknown';
+  }
+  if(settings.processing==='auto3')$('previewMode').textContent='AUTO 3.0 · M17 · '+(fog3.valid?fog3.label:'аналіз…');
 }
 
 function setStatus(msg,type=''){$('message').textContent=msg;$('message').className='message '+type;}
@@ -60,7 +71,7 @@ function updateAll() {
     case 'off':desc='OFF: без обробки, кадр залишається оригінальним.';break;
     case 'auto1':desc='AUTO 1.0 → M14 · CLASSICAL + DCP';break;
     case 'auto2':desc='AUTO 2.0 → M16 · захищений CLASSICAL + EDGE DCP';break;
-    case 'auto3':desc='AUTO 3.0 → DCP + локальний контраст + насиченість; адаптивна сила M16';break;
+    case 'auto3':desc='AUTO 3.0 → M17 · DCP + локальний контраст + насиченість; адаптивна сила';break;
     default:desc=`MANUAL → M${settings.algorithm} · ${MODES.find(x=>x[0]===settings.algorithm)?.[1]}`;
   }
   $('modeDetail').textContent=desc;
@@ -133,7 +144,7 @@ function outputSize(){const [w,h]=dims();if(!w||!h)return null;
   return [width,height,w,h];
 }
 function analyzeFog3(time){
-  if(settings.processing!=='auto3'||time-fog3.last<850)return;
+  if(sourceType==='none'||(fog3.last&&time-fog3.last<850))return;
   fog3.last=time;
   try{
     analysisCtx.drawImage(els.original,0,0,64,36);
@@ -156,7 +167,7 @@ function analyzeLighting(time){if(settings.scene!=='auto'){measuredNight=setting
     $('lightState').textContent=`AUTO → ${measuredNight?'NIGHT':'DAY'} (${Math.round(mean*100)}%)`;
   }catch{$('lightState').textContent='AUTO';}
 }
-function currentMode(){return settings.processing==='auto1'?14:settings.processing==='auto2'||settings.processing==='auto3'?16:settings.processing==='manual'?settings.algorithm:0;}
+function currentMode(){return settings.processing==='auto1'?14:settings.processing==='auto2'?16:settings.processing==='auto3'?17:settings.processing==='manual'?settings.algorithm:0;}
 function draw(time){if(!gpu?.program||sourceType==='none')return;
   if ((sourceType==='video'||sourceType==='camera') && source.readyState<2) return;
   const z=outputSize();if(!z)return;
