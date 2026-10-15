@@ -1,4 +1,5 @@
 import {DehazeGL} from './gl.js';
+import {estimateFog,fogLabel} from './auto3.js';
 
 const $=id=>document.getElementById(id);
 const MODES=[
@@ -22,6 +23,18 @@ const analysisCtx=$('analysisCanvas').getContext('2d',{willReadFrequently:true})
 let gpu=null, source=null,sourceType='none',currentUrl=null,stream=null,frameDirty=true;
 let isDragging=false, lastAnalysis=0,measuredNight=false,lastSample=null,lastMetrics=0, frames=0,msTotal=0;
 let deviceFacing='environment',lastSize='';
+const fog3={density:0,confidence:0,valid:false,label:'Очікування кадру',last:0};
+function resetFog3(){fog3.density=0;fog3.confidence=0;fog3.valid=false;fog3.label='Очікування кадру';fog3.last=0;updateFogIndicator();}
+function updateFogIndicator(){
+  const fogLabelText=fog3.valid?fog3.label:'Немає достовірної оцінки';
+  $('fogState').textContent=fogLabelText;
+  $('fogPercent').textContent=fog3.valid?Math.round(fog3.density*100)+'%':'—';
+  $('fogMeter').style.width=(fog3.valid?Math.round(fog3.density*100):0)+'%';
+  $('fogConfidence').textContent=fog3.valid
+    ?(fog3.confidence<.33?'Низька надійність':fog3.confidence<.65?'Середня надійність':'Вища надійність')
+    :'Очікування фото, відео або камери';
+  if(settings.processing==='auto3')$('previewMode').textContent='AUTO 3.0 · '+(fog3.valid?fog3.label:'аналіз…');
+}
 
 function setStatus(msg,type=''){$('message').textContent=msg;$('message').className='message '+type;}
 function persist(){try{localStorage.setItem('dehaze-web-v1',JSON.stringify(settings));$('profileState').textContent='Налаштування збережено локально';}catch{$('profileState').textContent='Не вдалося зберегти профіль';}}
@@ -47,10 +60,11 @@ function updateAll() {
     case 'off':desc='OFF: без обробки, кадр залишається оригінальним.';break;
     case 'auto1':desc='AUTO 1.0 → M14 · CLASSICAL + DCP';break;
     case 'auto2':desc='AUTO 2.0 → M16 · захищений CLASSICAL + EDGE DCP';break;
+    case 'auto3':desc='AUTO 3.0 → DCP + локальний контраст + насиченість; адаптивна сила M16';break;
     default:desc=`MANUAL → M${settings.algorithm} · ${MODES.find(x=>x[0]===settings.algorithm)?.[1]}`;
   }
   $('modeDetail').textContent=desc;
-  $('previewMode').textContent=settings.processing==='off'?'OFF':settings.processing==='auto1'?'AUTO 1.0 · M14':settings.processing==='auto2'?'AUTO 2.0 · M16':`MANUAL · M${settings.algorithm}`;
+  $('previewMode').textContent=settings.processing==='off'?'OFF':settings.processing==='auto1'?'AUTO 1.0 · M14':settings.processing==='auto2'?'AUTO 2.0 · M16':settings.processing==='auto3'?'AUTO 3.0 · '+(fog3.valid?fog3.label:'аналіз…'):`MANUAL · M${settings.algorithm}`;
   const viewer=els.viewer;
   viewer.className='viewer view-'+settings.view;
   viewer.querySelector('.processed').style.clipPath=settings.view==='split'?`inset(0 0 0 ${settings.split}%)`:'';
@@ -59,7 +73,7 @@ function updateAll() {
   frameDirty=true;
 }
 function applyChange(key,value){settings[key]=value;if(['haze','contrast','brightness','saturation','sky','detail'].includes(key)) settings.preset='custom';persist();updateAll();}
-function setSource(type,element,name){source=element;sourceType=type;frameDirty=true;$('emptyState').hidden=true;
+function setSource(type,element,name){source=element;sourceType=type;frameDirty=true;resetFog3();$('emptyState').hidden=true;
   $('sourceTag').textContent=name;
   for(const id of ['saveFrame','saveOriginal']) $(id).disabled=false;
   const playing=type==='video';for(const id of ['playBtn','pauseBtn','stopBtn','minus10','plus10','timeline']) $(id).disabled=!playing;
@@ -118,6 +132,21 @@ function outputSize(){const [w,h]=dims();if(!w||!h)return null;
   width=Math.max(1,Math.round(width*k));height=Math.max(1,Math.round(height*k));
   return [width,height,w,h];
 }
+function analyzeFog3(time){
+  if(settings.processing!=='auto3'||time-fog3.last<850)return;
+  fog3.last=time;
+  try{
+    analysisCtx.drawImage(els.original,0,0,64,36);
+    const sample=estimateFog(analysisCtx.getImageData(0,0,64,36));
+    if(sample.valid){
+      const first=!fog3.valid, alpha=sourceType==='image'||first?1:.22;
+      fog3.density=first?sample.density:fog3.density*(1-alpha)+sample.density*alpha;
+      fog3.confidence=sample.confidence;
+      fog3.valid=true;fog3.label=fogLabel(fog3.density);
+    }else{fog3.valid=false;fog3.label='Невизначено';}
+  }catch(e){fog3.valid=false;fog3.label='Помилка аналізу';}
+  updateFogIndicator();
+}
 function analyzeLighting(time){if(settings.scene!=='auto'){measuredNight=settings.scene==='night';$('lightState').textContent=measuredNight?'NIGHT':'DAY';return;}
   if(time-lastAnalysis<650)return;lastAnalysis=time;
   try{analysisCtx.drawImage(els.original,0,0,64,36);const d=analysisCtx.getImageData(0,0,64,36).data;
@@ -127,7 +156,7 @@ function analyzeLighting(time){if(settings.scene!=='auto'){measuredNight=setting
     $('lightState').textContent=`AUTO → ${measuredNight?'NIGHT':'DAY'} (${Math.round(mean*100)}%)`;
   }catch{$('lightState').textContent='AUTO';}
 }
-function currentMode(){return settings.processing==='auto1'?14:settings.processing==='auto2'?16:settings.processing==='manual'?settings.algorithm:0;}
+function currentMode(){return settings.processing==='auto1'?14:settings.processing==='auto2'||settings.processing==='auto3'?16:settings.processing==='manual'?settings.algorithm:0;}
 function draw(time){if(!gpu?.program||sourceType==='none')return;
   if ((sourceType==='video'||sourceType==='camera') && source.readyState<2) return;
   const z=outputSize();if(!z)return;
@@ -136,7 +165,8 @@ function draw(time){if(!gpu?.program||sourceType==='none')return;
   const start=performance.now();
   originalCtx.drawImage(source,0,0,w,h);
   analyzeLighting(time);
-  gpu.draw(els.original,settings,currentMode(),measuredNight);
+  analyzeFog3(time);
+  gpu.draw(els.original,settings,currentMode(),measuredNight,fog3);
   frames++;msTotal+=performance.now()-start;
   $('resolutionBadge').textContent=w+' × '+h;
   $('sourceResolution').textContent=sw+' × '+sh;
@@ -183,7 +213,7 @@ function wire(){
   els.media.addEventListener('ended',()=>{frameDirty=true});
   $('splitRange').addEventListener('input',e=>applyChange('split',Number(e.target.value)));
   document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>applyChange('view',b.dataset.view)));
-  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>applyChange('processing',b.dataset.mode)));
+  document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('click',()=>{if(b.dataset.mode==='auto3')fog3.last=0;applyChange('processing',b.dataset.mode)}));
   document.querySelectorAll('[data-scene]').forEach(b=>b.addEventListener('click',()=>applyChange('scene',b.dataset.scene)));
   $('algorithm').addEventListener('change',e=>applyChange('algorithm',Number(e.target.value)));
   $('strength').addEventListener('input',e=>applyChange('strength',Number(e.target.value)));
