@@ -11,6 +11,7 @@ on:
       - 'android/**'
       - 'app/**'
       - 'src/**'
+      - 'tests/**'
       - 'assets/**'
       - 'index.html'
       - 'manifest.webmanifest'
@@ -37,6 +38,12 @@ jobs:
         run: |
           echo "ANDROID_HOME=${ANDROID_HOME:-/usr/local/lib/android/sdk}" >> "$GITHUB_ENV"
           "${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager" "platforms;android-35" "build-tools;35.0.0"
+      - name: Check JS syntax and AUTO 3.0 estimator
+        run: |
+          node --check --input-type=module < src/app.js
+          node --check --input-type=module < src/gl.js
+          node --check --input-type=module < src/auto3.js
+          node --test tests/*.test.mjs
       - name: Prepare offline WebGL assets
         run: python3 android/package_assets.py
       - uses: gradle/actions/setup-gradle@v4
@@ -45,20 +52,20 @@ jobs:
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Dehaze-Media-Lab-Tablet-1.3-AUTO3-METER-UNIVERSAL.apk
       - name: Publish downloadable APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view tablet-v1.2.0 >/dev/null 2>&1; then
-            gh release upload tablet-v1.2.0 Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk --clobber
+          if gh release view tablet-v1.3.0 >/dev/null 2>&1; then
+            gh release upload tablet-v1.3.0 Dehaze-Media-Lab-Tablet-1.3-AUTO3-METER-UNIVERSAL.apk --clobber
           else
-            gh release create tablet-v1.2.0 Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk \
-              --title "Dehaze Media Lab · Universal Android Tablet 1.2" \
+            gh release create tablet-v1.3.0 Dehaze-Media-Lab-Tablet-1.3-AUTO3-METER-UNIVERSAL.apk \
+              --title "Dehaze Media Lab · Universal Android Tablet 1.3" \
               --notes "Offline immersive WebGL test APK. Android 8+. Debug-signed; not yet device tested."
           fi
       - uses: actions/upload-artifact@v4
         with:
           name: Dehaze-Media-Lab-Tablet-APK
-          path: Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk
+          path: Dehaze-Media-Lab-Tablet-1.3-AUTO3-METER-UNIVERSAL.apk
           retention-days: 30
