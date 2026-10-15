@@ -6,8 +6,8 @@ android {
         applicationId 'ua.dehaze.medialab'
         minSdk 26
         targetSdk 34
-        versionCode 102
-        versionName '1.2-auto3-tablet'
+        versionCode 103
+        versionName '1.3-auto3-meter'
     }
     buildTypes {
         release {
