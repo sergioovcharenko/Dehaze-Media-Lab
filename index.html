@@ -33,7 +33,12 @@
           <div class="canvas-pane processed"><canvas id="processedCanvas"></canvas><span class="pane-label">DEHAZE</span></div>
           <div id="divider" class="split-divider" aria-hidden="true"></div>
           <div id="emptyState" class="empty-state"><div class="empty-icon">▧</div><strong>Оберіть фото, відео або камеру</strong><span>Перевіряйте алгоритми на одному кадрі та порівнюйте зміни.</span></div>
-          <div class="view-bottom"><span id="previewMode" class="on-video">AUTO 2.0 · M16</span><span id="resolutionBadge" class="on-video">—</span></div>
+          <div id="fogOverlay" class="fog-overlay" role="group" aria-label="Автоматична оцінка сили туману" hidden>
+            <div class="fog-overlay-row"><span class="fog-overlay-caption">СЕРПАНОК · АВТОАНАЛІЗ</span><strong id="fogOverlayPercent">—</strong></div>
+            <div id="fogOverlayMeter" class="fog-overlay-track" role="progressbar" aria-label="Оцінка сили серпанку" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div id="fogOverlayFill" class="fog-overlay-fill"></div></div>
+            <div id="fogOverlayLabel" class="fog-overlay-result">Аналіз кадру…</div>
+          </div>
+          <div class="view-bottom"><span id="previewMode" class="on-video">AUTO 3.0 · M17</span><span id="resolutionBadge" class="on-video">—</span></div>
         </div>
         <div id="splitBar" class="split-bar"><label for="splitRange">Порівняння</label><input id="splitRange" type="range" min="0" max="100" value="50"><output id="splitValue">50 / 50</output></div>
         <div class="playback-controls">
@@ -60,7 +65,7 @@
     </section>
     <aside class="settings" aria-label="Налаштування алгоритмів">
       <div class="settings-head"><div><span class="eyebrow">DIGITAL DEHAZING</span><h2>Налаштування</h2></div><span class="version">WEB 3.0 · TEST 16 BASIS</span></div>
-      <div class="section"><label class="section-title">Режим обробки</label><div id="modeTabs" class="segmented three"><button data-mode="off">OFF</button><button data-mode="auto1">AUTO 1.0</button><button data-mode="auto2" class="active">AUTO 2.0</button><button data-mode="auto3">AUTO 3.0</button><button data-mode="manual">MANUAL</button></div></div>
+      <div class="section"><label class="section-title">Режим обробки</label><div id="modeTabs" class="segmented three"><button data-mode="off">OFF</button><button data-mode="auto1">AUTO 1.0</button><button data-mode="auto2">AUTO 2.0</button><button data-mode="auto3" class="active">AUTO 3.0</button><button data-mode="manual">MANUAL</button></div></div>
       <div class="section"><label class="section-title" for="algorithm">Алгоритм</label><select id="algorithm" class="field full" disabled></select><p class="hint" id="modeDetail">AUTO 2.0: CLASSICAL + EDGE DCP (M16)</p></div>
       <div class="section auto3-scan" id="auto3Panel">
         <div class="section-row"><label class="section-title">AUTO 3.0 · Оцінка серпанку</label><output id="fogPercent">—</output></div>
