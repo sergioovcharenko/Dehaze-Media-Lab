@@ -1,5 +1,9 @@
 name: Build Dehaze Tablet APK
 
+concurrency:
+  group: dehaze-tablet-build
+  cancel-in-progress: true
+
 on:
   push:
     branches: [main]
@@ -41,20 +45,20 @@ jobs:
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Dehaze-Media-Lab-Tablet-1.1-UNIVERSAL.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk
       - name: Publish downloadable APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view tablet-v1.1.0 >/dev/null 2>&1; then
-            gh release upload tablet-v1.1.0 Dehaze-Media-Lab-Tablet-1.1-UNIVERSAL.apk --clobber
+          if gh release view tablet-v1.2.0 >/dev/null 2>&1; then
+            gh release upload tablet-v1.2.0 Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk --clobber
           else
-            gh release create tablet-v1.1.0 Dehaze-Media-Lab-Tablet-1.1-UNIVERSAL.apk \
-              --title "Dehaze Media Lab · Universal Android Tablet 1.1" \
+            gh release create tablet-v1.2.0 Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk \
+              --title "Dehaze Media Lab · Universal Android Tablet 1.2" \
               --notes "Offline immersive WebGL test APK. Android 8+. Debug-signed; not yet device tested."
           fi
       - uses: actions/upload-artifact@v4
         with:
           name: Dehaze-Media-Lab-Tablet-APK
-          path: Dehaze-Media-Lab-Tablet-1.1-UNIVERSAL.apk
+          path: Dehaze-Media-Lab-Tablet-1.2-AUTO3-UNIVERSAL.apk
           retention-days: 30
