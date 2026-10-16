@@ -13,7 +13,7 @@ body{margin:0;background:#101722;color:#edf3ff;font:15px system-ui;padding:16px}
 import {DehazeGL} from './src/gl.js';
 import {estimateFog,fogLabel} from './src/auto3.js';
 const $=id=>document.getElementById(id),grid=$('grid');
-const modes=[['ORIGINAL','off',0],['AUTO 1.0','auto1',14],['AUTO 2.0','auto2',16],['AUTO 3.0','auto3',17],['ADAPTIVE M1','manual',1],['CLASSICAL M4','manual',4],['CAP M7','manual',7],['CLAHE-LIKE M8','manual',8],['RETINEX-LIKE M9','manual',9],['LOCAL CONTRAST M15','manual',15]];
+const modes=[["ORIGINAL","off",0],["AUTO 1.0","auto1",14],["AUTO 2.0","auto2",16],["AUTO 3.0","auto3",17],["ADAPTIVE M1","manual",1],["FAST DCP M2","manual",2],["LIVE DCP M3","manual",3],["CLASSICAL M4","manual",4],["DCP BALANCED M5","manual",5],["DCP STRONG M6","manual",6],["CAP M7","manual",7],["CLAHE-LIKE M8","manual",8],["RETINEX-LIKE M9","manual",9],["EDGE DCP M10","manual",10],["MS RETINEX (LITE) M11","manual",11],["LIME LIGHT M12","manual",12],["LOCAL GAMMA M13","manual",13],["CLASSIC + DCP M14","manual",14],["LOCAL CONTRAST M15","manual",15]];
 let img=null,results=[];
 $('file').onchange=()=>{const file=$('file').files[0];if(!file)return;const url=URL.createObjectURL(file);const im=new Image();im.onload=()=>{img=im;URL.revokeObjectURL(url);$('run').disabled=false;$('status').textContent='Кадр завантажено: '+im.naturalWidth+'×'+im.naturalHeight;};im.onerror=()=>{$('status').textContent='Помилка відкриття зображення';URL.revokeObjectURL(url)};im.src=url};
 $('run').onclick=async()=>{if(!img)return;$('run').disabled=true;$('save').disabled=true;grid.replaceChildren();results=[];
