@@ -224,8 +224,8 @@ void main() {
                     +texture2D(source,clamp(uv-vec2(r.x,0.0),vec2(0.0),vec2(1.0))).rgb
                     +texture2D(source,clamp(uv+vec2(0.0,r.y),vec2(0.0),vec2(1.0))).rgb
                     +texture2D(source,clamp(uv-vec2(0.0,r.y),vec2(0.0),vec2(1.0))).rgb)*0.25;
-        highp float flat=1.0-smoothstep(0.02,0.11,abs(y-lum(n)));
-        highp vec3 denoised=mix(c,n,(0.10+0.12*control)*flat*(1.0-texture));
+        highp float flatWeight=1.0-smoothstep(0.02,0.11,abs(y-lum(n)));
+        highp vec3 denoised=mix(c,n,(0.10+0.12*control)*flatWeight*(1.0-texture));
         highp float tDense=clamp(1.0-(0.89+0.20*control)*dc,0.32,1.0);
         highp vec3 denseRec=clamp((denoised-A)/tDense+A,0.0,1.0);
         highp vec3 denseColor=clamp(vec3(lum(denseRec))+
