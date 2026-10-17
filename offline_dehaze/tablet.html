@@ -34,7 +34,7 @@ function clamp(x){return Math.max(0,Math.min(255,x))}
 function process(mode){const src=canvases[0],dst=canvases[mode],w=src.width,h=src.height,ctx=dst.getContext('2d');const data=src.getContext('2d').getImageData(0,0,w,h),a=data.data,original=new Uint8ClampedArray(a),strength=Number(slider.value)/100;let mean=0;for(let i=0;i<a.length;i+=4)mean+=.299*a[i]+.587*a[i+1]+.114*a[i+2];mean/=w*h;
 let local=null;if(mode===2){const cw=Math.max(1,Math.ceil(w/32)),ch=Math.max(1,Math.ceil(h/32));const off=document.createElement('canvas');off.width=cw;off.height=ch;const oc=off.getContext('2d',{willReadFrequently:true});oc.drawImage(src,0,0,cw,ch);local=oc.getImageData(0,0,cw,ch).data}
 for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;let r=original[i],g=original[i+1],b=original[i+2];if(mode===1){const k=1+.45*strength;r=(r-mean)*k+mean;g=(g-mean)*k+mean;b=(b-mean)*k+mean}else if(mode===2){const cx=Math.min(Math.ceil(w/32)-1,Math.floor(x/32)),cy=Math.min(Math.ceil(h/32)-1,Math.floor(y/32)),j=(cy*Math.ceil(w/32)+cx)*4;const l=(local[j]+local[j+1]+local[j+2])/3;const k=1+.65*strength;r=(r-l)*k+l;g=(g-l)*k+l;b=(b-l)*k+l}else{const k=1+.5*strength;r=(r-mean)*k+mean+7*strength;g=(g-mean)*k+mean+4*strength;b=(b-mean)*k+mean-8*strength}a[i]=clamp(r);a[i+1]=clamp(g);a[i+2]=clamp(b)}ctx.putImageData(data,0,0)}
-run.onclick=()=>{if(!image)return;run.disabled=true;status.textContent='Обробка AUTO 1–3…';requestAnimationFrame(()=>setTimeout(()=>{try{drawOriginal();for(let m=1;m<=3;m++)process(m);status.textContent='Готово: ORIGINAL та AUTO 1–3. DehazeFormer T/S/B/M ще не працюють.'}catch(e){status.textContent='Помилка обробки: '+e.message}finally{run.disabled=false}},30))};
+run.onclick=()=>{if(!image)return;run.disabled=true;status.textContent='Обробка AUTO 1–3…';requestAnimationFrame(()=>setTimeout(()=>{try{drawOriginal();for(let m=1;m<=3;m++)process(m);status.textContent='Готово: ORIGINAL та AUTO 1–3. AUTO готові. Для DehazeFormer вибери ONNX-файли й запусти окремо.'}catch(e){status.textContent='Помилка обробки: '+e.message}finally{run.disabled=false}},30))};
 </script>
 
 <script>
@@ -45,7 +45,7 @@ const states=new Map();
 const controls=document.getElementById('modelControls');
 const picker=document.getElementById('onnxFiles');
 const note=document.getElementById('onnxStatus');
-let busy=false,ortPromise=null;
+let busy=false,ortPromise=null,pendingModel=null;
 function setStatus(v){note.textContent=v}
 function getCanvas(k){
  const tile=document.querySelectorAll('#grid .tile')[slots.indexOf(k)+4];
@@ -60,13 +60,14 @@ function getCanvas(k){
 }
 function prepareButtons(){
  controls.replaceChildren();
- for(const k of slots){const b=document.createElement('button');b.textContent='Запустити '+k.toUpperCase();b.disabled=!states.has(k)||busy;b.addEventListener('click',()=>infer(k));controls.append(b)}
+ for(const k of slots){const b=document.createElement('button');b.textContent='Запустити '+k.toUpperCase();b.disabled=busy;b.addEventListener('click',()=>{if(!states.has(k)){pendingModel=k;setStatus('Вибери файл dehazeformer-'+k+'.onnx для запуску '+k.toUpperCase());picker.click();return}infer(k)});controls.append(b)}
 }
 picker.addEventListener('change',()=>{
- states.clear();
  for(const file of picker.files){const match=file.name.toLowerCase().match(/dehazeformer[-_]?([tsbm])\.onnx$/);
- if(match)states.set(match[1],file)}
+ if(match)states.set(match[1],file);else if(pendingModel && picker.files.length===1 && file.name.toLowerCase().endsWith('.onnx'))states.set(pendingModel,file)}
+ const selected=pendingModel;pendingModel=null;
  prepareButtons();setStatus('Обрано моделей: '+states.size+'. Вибери фото і запусти потрібну модель.');
+ if(selected&&states.has(selected)){if(document.getElementById('file').files?.length)infer(selected);else setStatus('Модель '+selected.toUpperCase()+' завантажена. Тепер вибери фотографію.')}
 });
 function loadRuntime(){
  if(!ortPromise)ortPromise=new Promise((resolve,reject)=>{
@@ -83,7 +84,7 @@ async function infer(k){
  if(busy)return;
  const imageFile=document.getElementById('file').files?.[0];
  if(!imageFile){setStatus('Спочатку вибери фотографію.');return}
- const modelFile=states.get(k);if(!modelFile)return;
+ const modelFile=states.get(k);if(!modelFile){setStatus('Вибери файл моделі '+k.toUpperCase());return}
  busy=true;prepareButtons();let session;
  try{
  setStatus(k.toUpperCase()+': завантаження ONNX Runtime…');
