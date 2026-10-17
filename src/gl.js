@@ -35,7 +35,7 @@ export class DehazeGL {
     gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,-1,1,1,-1,1,1]),gl.STATIC_DRAW);
     gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
     this.uniforms={};
-    ['source','mode','strength','autoBlend','u_off','u_haze','u_brightness','u_contrast','u_saturation','u_skyProtect','u_detail','u_night'].forEach(name=>{this.uniforms[name]=gl.getUniformLocation(p,name)});
+    ['source','mode','strength','autoBlend','u_off','u_haze','u_brightness','u_contrast','u_saturation','u_skyProtect','u_detail','u_night','u_fogDensity','u_fogConfidence','u_texel'].forEach(name=>{this.uniforms[name]=gl.getUniformLocation(p,name)});
     this.texture=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,this.texture);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
@@ -61,12 +61,15 @@ export class DehazeGL {
     // strength slider acts as sensitivity, not a forced haze category.
     const strength=isAuto3 ? Math.max(.08,Math.min(.92,(.16+.77*fog)*(.45+.55*settings.strength/65))) : settings.strength/100;
     const haze=isAuto3 ? Math.max(.22,Math.min(.96,.24+.70*fog)) : settings.haze/100;
-    const values={mode, strength,autoBlend:settings.processing==='auto1'||settings.processing==='auto2'||isAuto3?1:0,
+    const values={mode, strength,autoBlend:settings.processing==='auto1'||settings.processing==='auto2'?1:0,
       u_off:settings.processing==='off'||(isAuto3&&fog3?.valid&&fog<.13)?1:0,u_haze:haze,
       u_brightness:settings.brightness/50,u_contrast:settings.contrast/50,
       u_saturation:settings.saturation/100,u_skyProtect:settings.sky/100,
-      u_detail:settings.detail/100,u_night:night?1:0};
+      u_detail:settings.detail/100,u_night:night?1:0,
+      u_fogDensity:isAuto3&&fog3?.valid?fog:0,
+      u_fogConfidence:isAuto3&&fog3?.valid?fog3.confidence:0};
     for(const [name,value] of Object.entries(values)) if(u[name]!==null) gl.uniform1f(u[name],value);
+    if(u.u_texel!==null) gl.uniform2f(u.u_texel,1/Math.max(1,this.canvas.width),1/Math.max(1,this.canvas.height));
     gl.drawArrays(gl.TRIANGLES,0,6);
   }
 }
