@@ -4,7 +4,10 @@ import torch.nn.functional as F
 import math
 import numpy as np
 from torch.nn.init import _calculate_fan_in_and_fan_out
-from timm.models.layers import to_2tuple, trunc_normal_
+from torch.nn.init import trunc_normal_
+
+def to_2tuple(x):
+    return x if isinstance(x, tuple) else (x, x)
 
 
 class RLN(nn.Module):
