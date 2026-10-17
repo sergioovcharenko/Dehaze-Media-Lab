@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DHA Comparison Lab — вебтест</title>
+<style>
+:root{color-scheme:dark}body{margin:0;background:#101820;color:#edf3f6;font:15px system-ui,sans-serif}header{background:#1c2933;padding:16px 20px}h1{font-size:21px;margin:0}main{max-width:1450px;margin:auto;padding:16px}.controls{display:flex;flex-wrap:wrap;align-items:center;gap:12px;background:#1c2933;padding:14px;border-radius:12px}button,input{font:inherit}button{border:0;border-radius:8px;padding:10px 16px;background:#2d996c;color:white;cursor:pointer}button:disabled{opacity:.4}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin-top:16px}.tile{background:#1c2933;border-radius:10px;padding:10px}.tile h2{font-size:15px;margin:4px 0 10px}.tile canvas{width:100%;height:auto;aspect-ratio:16/9;object-fit:contain;background:#0b1016}.tile .pending{min-height:170px;display:grid;place-items:center;color:#b6c4cd;text-align:center;background:#121e27;border-radius:8px;padding:10px}.tile a{display:inline-block;color:#8ed9b8;margin-top:8px}#status{margin:12px 0;color:#b7cbd6}.hint{color:#b7cbd6;font-size:13px}
+</style>
+</head>
+<body><header><h1>DHA Comparison Lab</h1><small>Безкоштовний браузерний тест фотографій</small></header>
+<main>
+<div class="controls"><label>Фото: <input type="file" id="file" accept="image/*"></label><button id="run" disabled>Обробити AUTO</button><label>Інтенсивність <input id="strength" type="range" min="0" max="100" value="65"></label><output id="value">65%</output></div>
+<p id="status">Вибери фотографію. AUTO 1–3 працюють локально у браузері; DehazeFormer T/S/B/M ще не інтегровані.</p>
+<div class="grid" id="grid"></div>
+<p class="hint">AUTO 1–3 — експериментальні алгоритми корекції контрасту/кольору, а не оригінальні нейромережі DehazeFormer. Для T/S/B/M потрібні сумісні ONNX-моделі й перевірка в браузері.</p>
+</main>
+<script>
+'use strict';
+const modes=['ORIGINAL','AUTO 1.0 — контраст','AUTO 2.0 — локальна адаптація','AUTO 3.0 — колір і контраст','DehazeFormer-T','DehazeFormer-S','DehazeFormer-B','DehazeFormer-M'];
+const grid=document.querySelector('#grid'), canvases=[];
+modes.forEach((name,i)=>{const tile=document.createElement('section');tile.className='tile';const h=document.createElement('h2');h.textContent=name;tile.append(h);if(i<4){const c=document.createElement('canvas');c.width=640;c.height=360;tile.append(c);canvases.push(c);const a=document.createElement('a');a.textContent='Зберегти PNG';a.href='#';a.download='DHA-'+i+'.png';a.onclick=e=>{if(!image){e.preventDefault();return}a.href=c.toDataURL('image/png')};tile.append(a)}else{const d=document.createElement('div');d.className='pending';d.textContent='Модель ще не підключена — обробка недоступна';tile.append(d)}grid.append(tile)});
+let image=null;const file=document.querySelector('#file'),run=document.querySelector('#run'),status=document.querySelector('#status'),slider=document.querySelector('#strength');
+slider.oninput=()=>document.querySelector('#value').textContent=slider.value+'%';
+file.onchange=async()=>{const f=file.files?.[0];if(!f)return;try{const url=URL.createObjectURL(f);const img=new Image();await new Promise((resolve,reject)=>{img.onload=resolve;img.onerror=reject;img.src=url});image=img;URL.revokeObjectURL(url);drawOriginal();run.disabled=false;status.textContent='Фото завантажено. Натисни «Обробити AUTO».'}catch(e){status.textContent='Не вдалося відкрити фото: '+e.message}};
+function drawOriginal(){const w=image.naturalWidth,h=image.naturalHeight,scale=Math.min(1,1024/Math.max(w,h));for(const c of canvases){c.width=Math.max(1,Math.round(w*scale));c.height=Math.max(1,Math.round(h*scale))}const c=canvases[0];c.getContext('2d',{willReadFrequently:true}).drawImage(image,0,0,c.width,c.height)}
+function clamp(x){return Math.max(0,Math.min(255,x))}
+function process(mode){const src=canvases[0],dst=canvases[mode],w=src.width,h=src.height,ctx=dst.getContext('2d');const data=src.getContext('2d').getImageData(0,0,w,h),a=data.data,original=new Uint8ClampedArray(a),strength=Number(slider.value)/100;let mean=0;for(let i=0;i<a.length;i+=4)mean+=.299*a[i]+.587*a[i+1]+.114*a[i+2];mean/=w*h;
+let local=null;if(mode===2){const cw=Math.max(1,Math.ceil(w/32)),ch=Math.max(1,Math.ceil(h/32));const off=document.createElement('canvas');off.width=cw;off.height=ch;const oc=off.getContext('2d',{willReadFrequently:true});oc.drawImage(src,0,0,cw,ch);local=oc.getImageData(0,0,cw,ch).data}
+for(let y=0;y<h;y++)for(let x=0;x<w;x++){const i=(y*w+x)*4;let r=original[i],g=original[i+1],b=original[i+2];if(mode===1){const k=1+.45*strength;r=(r-mean)*k+mean;g=(g-mean)*k+mean;b=(b-mean)*k+mean}else if(mode===2){const cx=Math.min(Math.ceil(w/32)-1,Math.floor(x/32)),cy=Math.min(Math.ceil(h/32)-1,Math.floor(y/32)),j=(cy*Math.ceil(w/32)+cx)*4;const l=(local[j]+local[j+1]+local[j+2])/3;const k=1+.65*strength;r=(r-l)*k+l;g=(g-l)*k+l;b=(b-l)*k+l}else{const k=1+.5*strength;r=(r-mean)*k+mean+7*strength;g=(g-mean)*k+mean+4*strength;b=(b-mean)*k+mean-8*strength}a[i]=clamp(r);a[i+1]=clamp(g);a[i+2]=clamp(b)}ctx.putImageData(data,0,0)}
+run.onclick=()=>{if(!image)return;run.disabled=true;status.textContent='Обробка AUTO 1–3…';requestAnimationFrame(()=>setTimeout(()=>{try{drawOriginal();for(let m=1;m<=3;m++)process(m);status.textContent='Готово: ORIGINAL та AUTO 1–3. DehazeFormer T/S/B/M ще не працюють.'}catch(e){status.textContent='Помилка обробки: '+e.message}finally{run.disabled=false}},30))};
+</script>
+</body></html>
