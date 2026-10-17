@@ -73,7 +73,7 @@
         <div class="fog-state" id="fogState">Очікування фото, відео або камери</div>
         <div class="fog-progress"><div id="fogMeter"></div></div>
         <p class="hint" id="fogConfidence">Лише експериментальна оцінка за кадром</p>
-        <p class="hint">Класифікація: немає / легкий / середній / густий. AUTO 3.0 змінює силу M16 автоматично; значення не є вимірюванням реальної видимості.</p>
+        <p class="hint">Класифікація: немає / легкий / середній / густий. AUTO 3.0 використовує окремий M17 з плавним переходом між LIGHT, MEDIUM та DENSE; відсоток не є вимірюванням реальної видимості.</p>
       </div>
       <div class="section"><label class="section-title">Умови освітлення</label><div id="sceneTabs" class="segmented three"><button data-scene="auto" class="active">AUTO</button><button data-scene="day">DAY</button><button data-scene="night">NIGHT</button></div><p class="hint">AUTO визначає день/ніч за загальною яскравістю кадру.</p></div>
       <div class="section"><div class="section-row"><label class="section-title" for="strength">Сила алгоритму</label><output id="strengthOut">65%</output></div><input type="range" id="strength" min="0" max="100" step="1" value="65"><div class="preset-buttons" id="strengthPresets"><button data-strength="35">LOW</button><button data-strength="65" class="active">MEDIUM</button><button data-strength="100">HIGH</button></div><p class="hint">AUTO використовує власне адаптивне посилення; цей повзунок задає базовий рівень.</p></div>
