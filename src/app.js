@@ -71,7 +71,7 @@ function updateAll() {
     case 'off':desc='OFF: без обробки, кадр залишається оригінальним.';break;
     case 'auto1':desc='AUTO 1.0 → M14 · CLASSICAL + DCP';break;
     case 'auto2':desc='AUTO 2.0 → M16 · захищений CLASSICAL + EDGE DCP';break;
-    case 'auto3':desc='AUTO 3.0 → M17 · DCP + локальний контраст + насиченість; адаптивна сила';break;
+    case 'auto3':desc='AUTO 3.0 → M17 · власна обробка LIGHT / MEDIUM / DENSE із плавними переходами, захистом світлих зон і зменшенням шуму';break;
     default:desc=`MANUAL → M${settings.algorithm} · ${MODES.find(x=>x[0]===settings.algorithm)?.[1]}`;
   }
   $('modeDetail').textContent=desc;
