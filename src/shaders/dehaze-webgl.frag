@@ -12,6 +12,9 @@ uniform float u_night;
 uniform highp float strength;
 uniform highp float mode;
 uniform highp float autoBlend;
+uniform highp float u_fogDensity;
+uniform highp float u_fogConfidence;
+uniform highp vec2 u_texel;
 
 highp float lum(highp vec3 c) {
     return dot(c, vec3(0.299, 0.587, 0.114));
@@ -162,7 +165,7 @@ void main() {
         highp float mult=0.26+0.46*s;
         highp float targetY=clamp(y+(y-local)*mult,0.0,1.0);
         outc=mix(c,clamp(c+vec3(targetY-y),0.0,1.0),(0.45+0.38*s)*guard);
-    } else if(mode<17.5) { // 16 AUTO 2.0 / 17 AUTO 3.0: adaptive protected classic+edge-DCP fusion
+    } else if(mode<16.5) { // 16 AUTO 2.0: protected classic+edge-DCP fusion (unchanged)
         highp float dc=guidedDark(uv);
         highp float base=localL(uv,vec2(0.010));
         highp float localContrast=clamp(abs(y-base)*5.0,0.0,1.0);
@@ -180,6 +183,64 @@ void main() {
         highp float dcpW=mix(0.16,0.58,hazeW);
         highp vec3 fusion=mix(classic,dcp,dcpW);
         outc=mix(c,fusion,(0.40+0.32*limitedS)*guard);
+    } else if(mode<17.5) { // 17 AUTO 3.0: independent three-stage, locally-adaptive restoration
+        // The global estimate controls the blend; local cues modulate the effect.
+        // These are approximations for a real-time WebGL1 tablet, not full DCP/FADE.
+        highp float density=clamp(u_fogDensity,0.0,1.0);
+        highp float reliability=clamp(u_fogConfidence,0.0,1.0);
+        highp float control=clamp(strength,0.0,1.0);
+        highp float dc=guidedDark(uv);
+        highp float nearL=localL(uv,max(u_texel*6.0,vec2(0.003)));
+        highp float texture=clamp(abs(y-nearL)*7.5,0.0,1.0);
+        // Local contrast stops severe dark-channel corrections at sharp edges.
+        highp float localFog=clamp((dc-0.08)*1.6-texture*0.48,0.0,1.0);
+        highp float localWeight=clamp(0.72+0.36*localFog,0.40,1.0);
+        highp float detailGuard=(1.0-0.33*texture)*(1.0-0.40*sky);
+        highp float darkGuard=smoothstep(0.045,0.23,y);
+        highp float motionSafe=0.85+0.15*reliability;
+
+        // Stage 1 LIGHT: low-contrast enhancement and restrained color recovery.
+        highp float mildContrast=(0.16+0.30*control)*localWeight;
+        highp float targetY=clamp(y+(y-nearL)*mildContrast,0.0,1.0);
+        highp vec3 light=clamp(c+vec3(targetY-y),0.0,1.0);
+        highp float lowSat=1.0-smoothstep(0.16,0.50,sat);
+        highp float colorGain=1.0+(0.07+0.09*control)*lowSat;
+        light=clamp(vec3(lum(light))+(light-vec3(lum(light)))*colorGain,0.0,1.0);
+        light=mix(c,light,0.54+0.30*control);
+
+        // Stage 2 MEDIUM: edge-aware transmission restoration, not M16 fusion.
+        highp float power=(0.70+0.19*control)*localWeight;
+        highp float tMedium=clamp(1.0-power*dc,0.40,1.0);
+        highp vec3 A=vec3(0.90,0.92,0.94);
+        highp vec3 restoredMedium=clamp((c-A)/tMedium+A,0.0,1.0);
+        highp float mediumContrast=(0.14+0.23*control)*(0.55+0.45*localFog);
+        highp vec3 localMedium=clamp(c+vec3((y-nearL)*mediumContrast),0.0,1.0);
+        highp vec3 medium=mix(localMedium,restoredMedium,0.56+0.27*control);
+        medium=mix(c,medium,(0.63+0.23*control)*detailGuard*darkGuard*motionSafe);
+
+        // Stage 3 DENSE: stronger capped transmission, denoise flat areas first.
+        highp vec2 r=max(u_texel*2.0,vec2(0.0015));
+        highp vec3 n=(texture2D(source,clamp(uv+vec2(r.x,0.0),vec2(0.0),vec2(1.0))).rgb
+                    +texture2D(source,clamp(uv-vec2(r.x,0.0),vec2(0.0),vec2(1.0))).rgb
+                    +texture2D(source,clamp(uv+vec2(0.0,r.y),vec2(0.0),vec2(1.0))).rgb
+                    +texture2D(source,clamp(uv-vec2(0.0,r.y),vec2(0.0),vec2(1.0))).rgb)*0.25;
+        highp float flat=1.0-smoothstep(0.02,0.11,abs(y-lum(n)));
+        highp vec3 denoised=mix(c,n,(0.10+0.12*control)*flat*(1.0-texture));
+        highp float tDense=clamp(1.0-(0.89+0.20*control)*dc,0.32,1.0);
+        highp vec3 denseRec=clamp((denoised-A)/tDense+A,0.0,1.0);
+        highp vec3 denseColor=clamp(vec3(lum(denseRec))+
+                                   (denseRec-vec3(lum(denseRec)))*(1.07+0.10*control),0.0,1.0);
+        highp vec3 dense=mix(medium,denseColor,(0.52+0.23*control)*detailGuard*darkGuard*motionSafe);
+
+        // Smooth severity interpolation: no preset jump at 19/40/67% thresholds.
+        highp float wMedium=smoothstep(0.17,0.50,density);
+        highp float wDense=smoothstep(0.52,0.87,density);
+        highp vec3 progressive=mix(light,medium,wMedium);
+        progressive=mix(progressive,dense,wDense);
+        highp float overall=smoothstep(0.09,0.44,density)*(0.55+0.45*control);
+        // Low-confidence analysis limits rather than amplifies questionable corrections.
+        overall*=mix(0.58,1.0,reliability);
+        outc=mix(c,progressive,overall*guard);
     }
     highp float oy = lum(outc);
     if (oy > 0.94) outc *= 0.94 / max(oy, 0.001);
