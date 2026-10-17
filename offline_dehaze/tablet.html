@@ -20,7 +20,7 @@ const grid=document.getElementById('grid');
 for(let i=0;i<names.length;i++){const d=document.createElement('div');d.className='tile';d.innerHTML='<h3>'+labels[i]+'</h3>
 <img id="img'+i+'" alt="'+labels[i]+'">';grid.append(d)}const f=document.getElementById('file'),b=document.getElementById('run'),s=document.getElementById('status');
 f.onchange=()=>{if(f.files[0])document.getElementById('img0').src=URL.createObjectURL(f.files[0])};
-b.onclick=async()=>{if(!f.files[0]){s.textContent='Спочатку вибери фото';return}b.disabled=true;s.textContent='Обробка на ПК. Може тривати кілька хвилин…';try{const r=await fetch('/process',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:f.files[0]});
+b.onclick=async()=>{if(location.hostname.endsWith('github.io')){s.textContent='Обробка недоступна на GitHub Pages: сервер DehazeFormer ще не розгорнуто. Завантаження фотографії працює лише для перегляду оригіналу.';return;}if(!f.files[0]){s.textContent='Спочатку вибери фото';return}b.disabled=true;s.textContent='Обробка на ПК. Може тривати кілька хвилин…';try{const r=await fetch('/process',{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:f.files[0]});
 const d=await r.json();
 for(let i=0;i<names.length;i++){if(d.images?.[names[i]])document.getElementById('img'+i).src=d.images[names[i]]}s.textContent=d.ok?'Обробка завершена':('Помилка або частковий результат: '+(d.error||d.log||''))}catch(e){s.textContent='Помилка з’єднання: '+e.message}finally{b.disabled=false}}</script>
 </html>
