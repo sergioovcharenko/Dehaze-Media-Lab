@@ -60,7 +60,7 @@
         </div>
         <div class="view-exports"><button id="saveFrame" class="btn" disabled>↓ Зберегти оброблений кадр</button><button id="saveOriginal" class="btn" disabled>↓ Оригінал</button><button id="fullScreen" class="btn square" title="На весь екран">⛶</button></div>
       </div>
-      <div class="camera-options"><label for="cameraSelect">Камера</label><select id="cameraSelect" class="field"><option value="">Автоматично · основна</option></select><label for="resSelect">Обробка</label><select id="resSelect" class="field"><option value="native">Макс. доступна</option><option value="1920">До 1080p</option><option value="1280">До 720p</option><option value="854">До 480p</option></select><button class="btn" id="swapCamera">↻ Змінити камеру</button></div>
+      <div class="camera-options"><label for="cameraSelect">Камера</label><select id="cameraSelect" class="field"><option value="">Автоматично · основна</option></select><label for="resSelect">Обробка</label><select id="resSelect" class="field"><option value="auto" selected>Адаптивно · плавне відео</option><option value="native">Макс. доступна</option><option value="1920">До 1080p</option><option value="1280">До 720p</option><option value="854">До 480p</option></select><button class="btn" id="swapCamera">↻ Змінити камеру</button></div>
       <div class="metrics"><span>Камера/відео: <b id="sourceResolution">—</b></span><span>GPU-кадри/с: <b id="fps">—</b></span><span>CPU-час кадру: <b id="frameMs">—</b></span><span>Освітлення: <b id="lightState">—</b></span></div>
       <div id="message" class="message" role="status">Для доступу до камери потрібен HTTPS або localhost. Фото й відео працюють локально.</div>
     </section>
