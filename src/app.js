@@ -8,7 +8,7 @@ const MODES=[
   [9,'RETINEX-LIKE'],[10,'EDGE DCP'],[11,'MS RETINEX (LITE)'],
   [12,'LIME LIGHT'],[13,'LOCAL GAMMA'],[14,'CLASSIC + DCP'],[15,'LOCAL CONTRAST']
 ];
-const DEFAULT={processing:'auto3',algorithm:4,scene:'auto',strength:65,preset:'medium',haze:65,contrast:10,brightness:0,saturation:100,sky:70,detail:15,view:'split',split:50,output:'native'};
+const DEFAULT={processing:'auto3',algorithm:4,scene:'auto',strength:65,preset:'medium',haze:65,contrast:10,brightness:0,saturation:100,sky:70,detail:15,view:'split',split:50,output:'auto'};
 const PRESETS={
   light:{haze:35,contrast:5,brightness:0,saturation:100,sky:75,detail:10},
   medium:{haze:65,contrast:10,brightness:0,saturation:100,sky:70,detail:15},
@@ -16,13 +16,31 @@ const PRESETS={
   dusk:{haze:30,contrast:8,brightness:8,saturation:95,sky:80,detail:5}
 };
 let settings={...DEFAULT};
-try{ const old=JSON.parse(localStorage.getItem('dehaze-web-v1')||'null');if(old){for(const key of Object.keys(DEFAULT)){if(old[key]!==undefined&&typeof old[key]===typeof DEFAULT[key])settings[key]=old[key];}} }catch{}
+try{const old=JSON.parse(localStorage.getItem('dehaze-web-v1')||'null');if(old){for(const key of Object.keys(DEFAULT)){if(old[key]!==undefined&&typeof old[key]===typeof DEFAULT[key])settings[key]=old[key];}
+  // Migrate the old default full-resolution setting once. The user may select Native again.
+  if(old.output==='native'&&!localStorage.getItem('dehaze-resolution-v1.6-migrated')){
+    settings.output='auto';localStorage.setItem('dehaze-resolution-v1.6-migrated','1');
+  }
+}}catch{}
 const els={original:$('originalCanvas'),processed:$('processedCanvas'),viewer:$('viewer'),media:$('mediaElement')};
 const originalCtx=els.original.getContext('2d',{alpha:false,willReadFrequently:false});
 const analysisCtx=$('analysisCanvas').getContext('2d',{willReadFrequently:true});
 let gpu=null, source=null,sourceType='none',currentUrl=null,stream=null,frameDirty=true;
 let isDragging=false, lastAnalysis=0,measuredNight=false,lastSample=null,lastMetrics=0, frames=0,msTotal=0;
 let deviceFacing='environment',lastSize='';
+let videoFrameEpoch=0, frameReady=true, lastVideoDrawTime=0;
+const smoothPlayback={limit:1920,slowSeconds:0,fastSeconds:0};
+function beginDecodedFrameTracking(){
+  const epoch=++videoFrameEpoch;
+  frameReady=true;
+  if(typeof els.media.requestVideoFrameCallback!=='function')return;
+  const onDecodedFrame=()=>{
+    if(epoch!==videoFrameEpoch||!['video','camera'].includes(sourceType))return;
+    frameReady=true;
+    els.media.requestVideoFrameCallback(onDecodedFrame);
+  };
+  els.media.requestVideoFrameCallback(onDecodedFrame);
+}
 const fog3={density:0,confidence:0,valid:false,label:'Очікування кадру',last:0};
 function resetFog3(){fog3.density=0;fog3.confidence=0;fog3.valid=false;fog3.label='Очікування кадру';fog3.last=0;updateFogIndicator();}
 function updateFogIndicator(){
@@ -84,7 +102,7 @@ function updateAll() {
   frameDirty=true;
 }
 function applyChange(key,value){settings[key]=value;if(['haze','contrast','brightness','saturation','sky','detail'].includes(key)) settings.preset='custom';persist();updateAll();}
-function setSource(type,element,name){source=element;sourceType=type;frameDirty=true;resetFog3();$('emptyState').hidden=true;
+function setSource(type,element,name){source=element;sourceType=type;frameDirty=true;smoothPlayback.limit=1920;smoothPlayback.slowSeconds=0;smoothPlayback.fastSeconds=0;if(type==='video'||type==='camera')beginDecodedFrameTracking();resetFog3();$('emptyState').hidden=true;
   $('sourceTag').textContent=name;
   for(const id of ['saveFrame','saveOriginal']) $(id).disabled=false;
   const playing=type==='video';for(const id of ['playBtn','pauseBtn','stopBtn','minus10','plus10','timeline']) $(id).disabled=!playing;
@@ -96,6 +114,7 @@ function stopCamera(){
   if(els.media.srcObject){els.media.pause();els.media.srcObject=null;}
 }
 function clearPrevious(){
+  ++videoFrameEpoch;frameReady=true;
   // Stale srcObject takes precedence over video.src and can cause a black 2×2 frame.
   stopCamera();
   source=null;sourceType='none';frameDirty=true;
@@ -153,7 +172,7 @@ async function openCamera(id=''){
 }
 function outputSize(){const [w,h]=dims();if(!w||!h||(sourceType==='video'&&(w<16||h<16)))return null;
   const max= Math.min(gpu?.maxTextureSize||4096, gpu?.gl?.getParameter(gpu.gl.MAX_RENDERBUFFER_SIZE)||4096);
-  let width=w,height=h;const lim=settings.output==='native'?Infinity:Number(settings.output);
+  let width=w,height=h;const lim=settings.output==='native'||(settings.output==='auto'&&sourceType==='image')?Infinity:settings.output==='auto'?smoothPlayback.limit:Number(settings.output);
   // Width limits resolution; tall portraits are limited by GPU max texture size.
   const k=Math.min(1,lim/w,max/Math.max(w,h));
   width=Math.max(1,Math.round(width*k));height=Math.max(1,Math.round(height*k));
@@ -213,9 +232,40 @@ function draw(time){if(!gpu?.program||sourceType==='none')return;
 }
 function tick(time){requestAnimationFrame(tick);
   const motion=(sourceType==='video'&&!els.media.paused&&!els.media.ended)||(sourceType==='camera');
-  if((motion||frameDirty)&&source){try{draw(time)}catch(e){setStatus('Помилка обробки відео: '+e.message,'error');source=null;}}
+  // A 60 Hz screen does not imply 60 decoded video frames. Avoid GPU work on
+  // duplicate frames. Old WebView engines use a 30 FPS fallback throttle.
+  const hasFrameCallback=typeof els.media.requestVideoFrameCallback==='function';
+  const decoded=hasFrameCallback?frameReady:time-lastVideoDrawTime>=33;
+  if(source&&(frameDirty||(motion&&decoded))){
+    try{
+      draw(time);
+      if(sourceType==='video'||sourceType==='camera'){
+        frameReady=false;lastVideoDrawTime=time;
+      }
+    }catch(e){setStatus('Помилка обробки відео: '+e.message,'error');source=null;}
+  }
   if(sourceType==='video'&&time-lastMetrics>=250)updatePlayback();
-  if(time-lastMetrics>=1000){$('fps').textContent=frames?String(frames):'—';$('frameMs').textContent=frames?(msTotal/frames).toFixed(1)+' ms':'—';frames=0;msTotal=0;lastMetrics=time;}
+  if(time-lastMetrics>=1000){
+    const seconds=Math.max(.001,(time-lastMetrics)/1000);
+    const fps=frames/seconds;
+    $('fps').textContent=frames?String(Math.round(fps)):'—';
+    $('frameMs').textContent=frames?(msTotal/frames).toFixed(1)+' ms':'—';
+    if(settings.output==='auto'&&motion&&sourceType!=='image'){
+      if(fps<18){
+        smoothPlayback.slowSeconds+=seconds;smoothPlayback.fastSeconds=0;
+      }else if(fps>24){
+        smoothPlayback.fastSeconds+=seconds;smoothPlayback.slowSeconds=0;
+      }else{
+        smoothPlayback.fastSeconds=0;smoothPlayback.slowSeconds=0;
+      }
+      if(smoothPlayback.limit===1920&&smoothPlayback.slowSeconds>=3){
+        smoothPlayback.limit=1280;smoothPlayback.slowSeconds=0;frameDirty=true;
+      }else if(smoothPlayback.limit===1280&&smoothPlayback.fastSeconds>=7){
+        smoothPlayback.limit=1920;smoothPlayback.fastSeconds=0;frameDirty=true;
+      }
+    }
+    frames=0;msTotal=0;lastMetrics=time;
+  }
 }
 function formatTime(sec){if(!Number.isFinite(sec))return'00:00';const h=Math.floor(sec/3600),m=Math.floor(sec/60)%60,s=Math.floor(sec%60);return(h?String(h).padStart(2,'0')+':':'')+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');}
 function updatePlayback(){const v=els.media;const isVideo=sourceType==='video';$('curTime').textContent=isVideo?formatTime(v.currentTime):'00:00';$('duration').textContent=isVideo?(Number.isFinite(v.duration)?formatTime(v.duration):'--:--'):'00:00';
