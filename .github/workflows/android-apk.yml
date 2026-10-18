@@ -58,20 +58,20 @@ jobs:
       - name: Build APK
         run: gradle --no-daemon :app:assembleDebug
       - name: Rename APK
-        run: cp app/build/outputs/apk/debug/app-debug.apk Dehaze-Media-Lab-Tablet-1.5-AUTO3-NEW-ENGINE.apk
+        run: cp app/build/outputs/apk/debug/app-debug.apk Dehaze-Media-Lab-Tablet-1.6-AUTO3-SMOOTH-VIDEO.apk
       - name: Publish downloadable APK
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          if gh release view tablet-v1.5.0 >/dev/null 2>&1; then
-            gh release upload tablet-v1.5.0 Dehaze-Media-Lab-Tablet-1.5-AUTO3-NEW-ENGINE.apk --clobber
+          if gh release view tablet-v1.6.0 >/dev/null 2>&1; then
+            gh release upload tablet-v1.6.0 Dehaze-Media-Lab-Tablet-1.6-AUTO3-SMOOTH-VIDEO.apk --clobber
           else
-            gh release create tablet-v1.5.0 Dehaze-Media-Lab-Tablet-1.5-AUTO3-NEW-ENGINE.apk \
-              --title "Dehaze Media Lab · Universal Android Tablet 1.5" \
-              --notes "New independent AUTO 3.0 M17 multi-stage dehazing. AUTO 1.0/M14, AUTO 2.0/M16 and manual modes preserved. Includes tablet fullscreen and video/menu fixes. Android 8+, debug-signed, device testing required."
+            gh release create tablet-v1.6.0 Dehaze-Media-Lab-Tablet-1.6-AUTO3-SMOOTH-VIDEO.apk \
+              --title "Dehaze Media Lab · Universal Android Tablet 1.6" \
+              --notes "Improved M17 AUTO 3.0 playback: decoded-frame-driven GPU processing, adaptive video resolution, native photo resolution. AUTO 1.0/M14, AUTO 2.0/M16 and manual modes preserved. Includes tablet fullscreen and video/menu fixes. Android 8+, debug-signed, device testing required."
           fi
       - uses: actions/upload-artifact@v4
         with:
           name: Dehaze-Media-Lab-Tablet-APK
-          path: Dehaze-Media-Lab-Tablet-1.5-AUTO3-NEW-ENGINE.apk
+          path: Dehaze-Media-Lab-Tablet-1.6-AUTO3-SMOOTH-VIDEO.apk
           retention-days: 30
