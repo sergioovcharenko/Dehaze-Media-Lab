@@ -6,8 +6,8 @@ android {
         applicationId 'ua.dehaze.medialab'
         minSdk 26
         targetSdk 34
-        versionCode 105
-        versionName '1.5-auto3-new-engine'
+        versionCode 106
+        versionName '1.6-auto3-smooth-playback'
     }
     buildTypes {
         release {
