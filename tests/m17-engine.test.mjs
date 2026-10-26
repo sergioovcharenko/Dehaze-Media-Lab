@@ -21,6 +21,7 @@ test('M17 receives fog strength and confidence from source-based analysis',()=>{
   assert.match(bridge,/u_fogDensity/);
   assert.match(bridge,/u_fogConfidence/);
   assert.match(bridge,/u_texel/);
-  assert.match(bridge,/settings\.processing==='auto1'\|\|settings\.processing==='auto2'\?1:0/);
+  assert.match(bridge,/settings\.processing==='auto1'\|\|settings\.processing==='auto2'/);
+  assert.match(bridge,/renderMode=isAuto3 && !hasEstimate \? 16 : mode/);
   assert.match(script,/settings\.processing==='auto3'\?17/);
 });
