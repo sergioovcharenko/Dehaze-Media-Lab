@@ -41,28 +41,28 @@ function beginDecodedFrameTracking(){
   };
   els.media.requestVideoFrameCallback(onDecodedFrame);
 }
-const fog3={density:0,confidence:0,valid:false,label:'Очікування кадру',last:0};
-function resetFog3(){fog3.density=0;fog3.confidence=0;fog3.valid=false;fog3.label='Очікування кадру';fog3.last=0;updateFogIndicator();}
+const fog3={density:0,confidence:0,valid:false,label:'Очікування кадру',reason:'',last:0,invalidCount:0};
+function resetFog3(){fog3.density=0;fog3.confidence=0;fog3.valid=false;fog3.label='Очікування кадру';fog3.reason='';fog3.last=0;fog3.invalidCount=0;updateFogIndicator();}
 function updateFogIndicator(){
-  const fogLabelText=fog3.valid?fog3.label:'Немає достовірної оцінки';
+  const fogLabelText=fog3.valid?fog3.label:(fog3.reason||'Немає достовірної оцінки');
   $('fogState').textContent=fogLabelText;
   $('fogPercent').textContent=fog3.valid?Math.round(fog3.density*100)+'%':'—';
   $('fogMeter').style.width=(fog3.valid?Math.round(fog3.density*100):0)+'%';
   const confidence=fog3.valid
     ?(fog3.confidence<.33?'Низька надійність':fog3.confidence<.65?'Середня надійність':'Вища надійність')
-    :'Очікування фото, відео або камери';
+    :(fog3.reason||'Очікування фото, відео або камери');
   $('fogConfidence').textContent=confidence;
   const overlay=$('fogOverlay');
   if(overlay){
     overlay.hidden=sourceType==='none';
-    $('fogOverlayLabel').textContent=fog3.valid?fog3.label:'Аналіз кадру…';
+    $('fogOverlayLabel').textContent=fog3.valid?fog3.label:(fog3.reason||'Аналіз кадру…');
     $('fogOverlayPercent').textContent=fog3.valid?Math.round(fog3.density*100)+'%':'—';
     $('fogOverlayFill').style.width=(fog3.valid?Math.round(fog3.density*100):0)+'%';
     $('fogOverlayMeter').setAttribute('aria-valuenow',fog3.valid?String(Math.round(fog3.density*100)):'0');
     overlay.title='Експериментальна оцінка, не фізичний вимір туману. '+confidence;
     overlay.dataset.level=fog3.valid?(fog3.density<.19?'clear':fog3.density<.40?'light':fog3.density<.67?'medium':'dense'):'unknown';
   }
-  if(settings.processing==='auto3')$('previewMode').textContent='AUTO 3.0 · M17 · '+(fog3.valid?fog3.label:'аналіз…');
+  if(settings.processing==='auto3')$('previewMode').textContent=fog3.valid?'AUTO 3.0 · M17 · '+fog3.label:'AUTO 3.0 · резерв M16';
 }
 
 function setStatus(msg,type=''){$('message').textContent=msg;$('message').className='message '+type;}
@@ -93,7 +93,7 @@ function updateAll() {
     default:desc=`MANUAL → M${settings.algorithm} · ${MODES.find(x=>x[0]===settings.algorithm)?.[1]}`;
   }
   $('modeDetail').textContent=desc;
-  $('previewMode').textContent=settings.processing==='off'?'OFF':settings.processing==='auto1'?'AUTO 1.0 · M14':settings.processing==='auto2'?'AUTO 2.0 · M16':settings.processing==='auto3'?'AUTO 3.0 · M17 · '+(fog3.valid?fog3.label:'аналіз…'):`MANUAL · M${settings.algorithm}`;
+  $('previewMode').textContent=settings.processing==='off'?'OFF':settings.processing==='auto1'?'AUTO 1.0 · M14':settings.processing==='auto2'?'AUTO 2.0 · M16':settings.processing==='auto3'?(fog3.valid?'AUTO 3.0 · M17 · '+fog3.label:'AUTO 3.0 · резерв M16'):`MANUAL · M${settings.algorithm}`;
   const viewer=els.viewer;
   viewer.className='viewer view-'+settings.view;
   viewer.querySelector('.processed').style.clipPath=settings.view==='split'?`inset(0 0 0 ${settings.split}%)`:'';
@@ -182,20 +182,26 @@ function analyzeFog3(time){
   if(sourceType==='none'||(fog3.last&&time-fog3.last<850))return;
   fog3.last=time;
   try{
-    analysisCtx.drawImage(els.original,0,0,64,36);
-    const sample=estimateFog(analysisCtx.getImageData(0,0,64,36));
+    analysisCtx.drawImage(els.original,0,0,analysisCtx.canvas.width,analysisCtx.canvas.height);
+    const sample=estimateFog(analysisCtx.getImageData(0,0,analysisCtx.canvas.width,analysisCtx.canvas.height));
     if(sample.valid){
-      const first=!fog3.valid, alpha=sourceType==='image'||first?1:.22;
+      fog3.invalidCount=0;fog3.reason='';
+      const first=!fog3.valid, alpha=sourceType==='image'||first?1:Math.abs(fog3.density-sample.density)>.30?.46:.28;
       fog3.density=first?sample.density:fog3.density*(1-alpha)+sample.density*alpha;
       fog3.confidence=sample.confidence;
       fog3.valid=true;fog3.label=fogLabel(fog3.density);
-    }else{fog3.valid=false;fog3.label='Невизначено';}
-  }catch(e){fog3.valid=false;fog3.label='Помилка аналізу';}
+    }else{
+      fog3.reason=sample.reason||'Недостатньо інформації в кадрі';
+      if(++fog3.invalidCount>=2||sourceType==='image'){
+        fog3.valid=false;fog3.label='Невизначено';fog3.confidence=sample.confidence||0;
+      }
+    }
+  }catch(e){fog3.valid=false;fog3.label='Помилка аналізу';fog3.reason='Помилка доступу до відеокадру';}
   updateFogIndicator();
 }
 function analyzeLighting(time){if(settings.scene!=='auto'){measuredNight=settings.scene==='night';$('lightState').textContent=measuredNight?'NIGHT':'DAY';return;}
   if(time-lastAnalysis<650)return;lastAnalysis=time;
-  try{analysisCtx.drawImage(els.original,0,0,64,36);const d=analysisCtx.getImageData(0,0,64,36).data;
+  try{analysisCtx.drawImage(els.original,0,0,analysisCtx.canvas.width,analysisCtx.canvas.height);const d=analysisCtx.getImageData(0,0,analysisCtx.canvas.width,analysisCtx.canvas.height).data;
     let sum=0;for(let i=0;i<d.length;i+=16)sum+=0.2126*d[i]+0.7152*d[i+1]+0.0722*d[i+2];
     const mean=(sum/(d.length/16))/255; lastSample=mean;
     if(mean<0.29) measuredNight=true; else if(mean>0.39) measuredNight=false;
