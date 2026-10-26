@@ -56,18 +56,22 @@ export class DehazeGL {
     gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,this.texture);
     gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,sourceCanvas);
     const isAuto3=settings.processing==='auto3';
-    const fog=isAuto3 && fog3?.valid ? Math.max(0,Math.min(1,fog3.density)) : 0.15;
+    const hasEstimate=isAuto3 && !!fog3?.valid;
+    const fog=hasEstimate ? Math.max(0,Math.min(1,fog3.density)) : 0.15;
+    // When the frame contains no reliable evidence, keep video processing on
+    // with the proven AUTO 2 shader rather than pretending the M17 classifier worked.
+    const renderMode=isAuto3 && !hasEstimate ? 16 : mode;
     // AUTO 3.0 uses a conservative fog estimate to adjust strength. The user
     // strength slider acts as sensitivity, not a forced haze category.
-    const strength=isAuto3 ? Math.max(.08,Math.min(.92,(.16+.77*fog)*(.45+.55*settings.strength/65))) : settings.strength/100;
-    const haze=isAuto3 ? Math.max(.22,Math.min(.96,.24+.70*fog)) : settings.haze/100;
-    const values={mode, strength,autoBlend:settings.processing==='auto1'||settings.processing==='auto2'?1:0,
-      u_off:settings.processing==='off'||(isAuto3&&fog3?.valid&&fog<.13)?1:0,u_haze:haze,
+    const strength=hasEstimate ? Math.max(.08,Math.min(.92,(.16+.77*fog)*(.45+.55*settings.strength/65))) : settings.strength/100;
+    const haze=hasEstimate ? Math.max(.22,Math.min(.96,.24+.70*fog)) : settings.haze/100;
+    const values={mode:renderMode, strength,autoBlend:settings.processing==='auto1'||settings.processing==='auto2'||(isAuto3&&!hasEstimate)?1:0,
+      u_off:settings.processing==='off'||(hasEstimate&&fog<.13)?1:0,u_haze:haze,
       u_brightness:settings.brightness/50,u_contrast:settings.contrast/50,
       u_saturation:settings.saturation/100,u_skyProtect:settings.sky/100,
       u_detail:settings.detail/100,u_night:night?1:0,
-      u_fogDensity:isAuto3&&fog3?.valid?fog:0,
-      u_fogConfidence:isAuto3&&fog3?.valid?fog3.confidence:0};
+      u_fogDensity:hasEstimate?fog:0,
+      u_fogConfidence:hasEstimate?fog3.confidence:0};
     for(const [name,value] of Object.entries(values)) if(u[name]!==null) gl.uniform1f(u[name],value);
     if(u.u_texel!==null) gl.uniform2f(u.u_texel,1/Math.max(1,this.canvas.width),1/Math.max(1,this.canvas.height));
     gl.drawArrays(gl.TRIANGLES,0,6);
