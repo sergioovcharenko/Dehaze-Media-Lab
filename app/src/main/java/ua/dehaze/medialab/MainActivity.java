@@ -145,7 +145,7 @@ public class MainActivity extends Activity {
                 } catch(Exception e){runOnUiThread(()->Toast.makeText(MainActivity.this,"Не вдалося зберегти PNG",Toast.LENGTH_LONG).show());}
             }).start();
         }
-        @JavascriptInterface public String getVersion(){return "1.6-auto3-smooth-playback";}
+        @JavascriptInterface public String getVersion(){return "1.7-auto3-evidence-check";}
     }
     @Override public void onBackPressed() {
         web.evaluateJavascript("document.body.classList.contains('panel-open')", result -> {
